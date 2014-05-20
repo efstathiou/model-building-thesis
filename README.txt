@@ -23,9 +23,9 @@ README.txt				This file
 2. Data generation and graph formatting
 ------------------------------------------------
 	
-	1. Execute the R scripts in chapter_plotting.R to generate all the figures for the chapter.
-
-	2. Convert all the generated .eps files to .pdf with the following command:
-		find . -name "*.eps" -exec epstopdf {} \;
-
-	3. Execute the R scripts in main.R to create and evaluate the developed surrogate models.
+<ol>
+<li>Execute the R scripts in chapter_plotting.R to generate all the figures for the chapter.</li>
+<li>Convert all the generated .eps files to .pdf with the following command:
+	find . -name "*.eps" -exec epstopdf {} \;</li>
+<li>Execute the R scripts in main.R to create and evaluate the developed surrogate models.</li>
+</ol>
