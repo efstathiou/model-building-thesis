@@ -1,0 +1,3250 @@
+##
+## Read,transform, and split data
+##
+
+source(file="../R scripts and plotting/load_split_data.R")
+
+graphs_path <- "../images/Regression/Generated_Graphs"
+display_graphs <- 0
+sample_size <- 300
+
+data <- load_data(sample_size, display_graphs, graphs_path)
+
+data_train <- data$data_train
+data_valid <- data$data_valid
+data_test <- data$data_test
+
+##
+## Functions for calculating the performance prediction metrics
+##
+
+source(file="../R scripts and plotting/basic_functions.R")
+
+set.seed(1)
+
+####################################################################################################################
+##
+## Linear Regression (LR)
+##
+
+source(file="../R scripts and plotting/LR.R")
+
+##
+## Model Selection
+##
+
+	results <- findLRParameters(data_train, data_valid, responses, predictors)
+
+	# Print the id of predictor variables included in the developed models
+	xcomb <- foreach(i=1:length(predictors), .combine=c) %do% {combn(predictors, i, simplify=FALSE) }
+	formlist <- lapply(xcomb, function(l) formula(paste(responses_names[1], paste(l, collapse="+"), sep="~")))
+	formulas <- results$result1
+	print(formlist[formulas]) 
+
+##
+## Model Assessment
+##
+
+	## 1st Choice
+	# Brute Force:
+	# Optimal Parameters found in a previous call:
+	best_formula_valid <-  c(100,  34,  67, 105)
+
+	## 2nd Choice
+	# By observing the graphs RMSE vs. model complexity
+	best_formula_valid <-  c(9,  9, 37, 30)
+
+	calculateLRperformance(data_train, data_valid, data_test, best_formula_valid, NULL, responses, predictors, 1)
+	#calculateLRperformance(data_train, data_valid, data_test, results$result1, NULL, responses, predictors, 1)
+
+##
+## End of Linear Regression (LR)
+##
+####################################################################################################################
+
+
+####################################################################################################################
+##
+## Multivariate Adaptive Regression Splines (MARS)
+##
+
+source(file="../R scripts and plotting/MARS.R")
+
+##
+## Model Selection
+##
+
+	results <- findMARSParameters(data_train, data_valid, responses, predictors)
+
+	# Print the id of predictor variables included in the developed models
+	xcomb <- foreach(i=1:length(predictors), .combine=c) %do% {combn(predictors, i, simplify=FALSE) }
+	formlist <- lapply(xcomb, function(l) formula(paste(responses_names[1], paste(l, collapse="+"), sep="~")))
+	formulas <- results$result2
+	print(formlist[formulas]) 	
+
+##
+## Model Assessment
+##
+
+	## 1st Choice
+	# Brute Force:
+	# Optimal Parameters found in a previous call:
+	best_parameters_valid <- matrix( c(21, 21, 16, 20, 0.002, 0.004,0.002, 0.001, 21, 25, 23, 16), nrow=4, ncol =3)
+	best_formula_valid <- c(9, 34, 103, 80)
+
+	calculateMARSperformance(data_train, data_valid, data_test, best_parameters_valid, best_formula_valid, responses, predictors, 1)
+
+##
+## End of Multivariate Adaptive Regression Splines (MARS)
+##
+####################################################################################################################
+
+
+####################################################################################################################
+##
+## Classification and Regression Trees (CART)
+##
+
+source(file="../R scripts and plotting/CART.R")
+
+##
+## Model Selection
+##
+
+	results <- findCARTParameters(data_train, data_valid, responses, predictors)
+
+	# Print the id of predictor variables included in the developed models
+	xcomb <- foreach(i=1:length(predictors), .combine=c) %do% {combn(predictors, i, simplify=FALSE) }
+	formlist <- lapply(xcomb, function(l) formula(paste(responses_names[1], paste(l, collapse="+"), sep="~")))
+	formulas <- results$result2
+	print(formlist[formulas]) 
+
+##
+## Model Assessment
+##
+
+	## 1st Choice
+	# Brute Force:
+	# Optimal Parameters found in a previous call:
+	best_parameters_valid <- matrix( c(50, 50, 100, 50, 0.005, 0.005, 0.015, 0.001), nrow=4, ncol =2)
+	best_formula_valid <- c(75, 122, 74, 84)
+
+	calculateCARTperformance(data_train, data_valid, data_test, best_parameters_valid, best_formula_valid, responses, predictors)
+
+##
+## End of Classification and Regression Trees (CART)
+##
+####################################################################################################################
+
+
+####################################################################################################################
+##
+## Random Forests
+##
+
+source(file="../R scripts and plotting/RF.R")
+
+##
+## Model Selection
+##
+
+	results <- findRFParameters(data_train, data_test, responses, predictors)
+
+	# Print the id of predictor variables included in the developed models
+	xcomb <- foreach(i=1:length(predictors), .combine=c) %do% {combn(predictors, i, simplify=FALSE) }
+	formlist <- lapply(xcomb, function(l) formula(paste(responses_names[1], paste(l, collapse="+"), sep="~")))
+	formulas <- results$result2
+	print(formlist[formulas]) 
+
+##
+## Model Assessment
+##
+
+	## 1st Choice
+	# Brute Force:
+	# Optimal Parameters found in a previous call:
+	# 2000    1  500    2  750    1 3000    1
+	best_parameters_valid <- matrix( c(2000, 500, 750, 3000, 1, 2, 1, 1), nrow = 4, ncol = 2)
+
+	# Example call:
+	calculateRFperformance(data_train, data_valid, data_test, best_parameters_valid, responses)
+
+##
+## End of Random Forests
+##
+####################################################################################################################
+
+
+
+####################################################################################################################
+##
+## Final Complete Results
+##
+
+cat("\n\n\n**** MARS Optimal Parameters = ", as.vector(MARS_optimal_parameters), "\n",
+"--Goodness of fit \n",
+" MARS_RSS = ", MARS_RSS, "\n",
+" MARS MSE = ", MARS_MSEg, "\n",
+" MARS RMSE = ", MARS_RMSEg, "\n",
+" MARS_Rsq = ", MARS_Rsq, "\n",
+"\n --Predictive Performance \n",
+" MARS MSE = ", MARS_MSE, "\n",
+" MARS RMSE = ", MARS_RMSE, "\n",
+" MARS MAE = ", MARS_MAE, "\n",
+" MARS MAPE = ", MARS_MAPE, "\n",
+"\n**** CART Optimal Parameters = ", as.vector(CART_optimal_parameters), "\n",
+"--Goodness of fit \n",
+" CART_RSS = ", CART_RSS, "\n",
+" CART MSE = ", CART_MSEg, "\n",
+" CART RMSE = ", CART_RMSEg, "\n",
+" CART_Rsq = ", CART_Rsq, "\n",
+"\n --Predictive Performance \n",
+" CART MSE = ", CART_MSE, "\n",
+" CART RMSE = ", CART_RMSE, "\n",
+" CART MAE = ", CART_MAE, "\n",
+" CART MAPE = ", CART_MAPE, "\n",
+"\n**** Random Forests Optimal Parameters = ", as.vector(RF_optimal_parameters), "\n",
+"--Goodness of fit \n",
+" Random Forests_RSS = ", RF_RSS, "\n",
+" Random Forests MSE = ", RF_MSEg, "\n",
+" Random Forests RMSE = ", RF_RMSEg, "\n",
+" Random Forests_Rsq = ", RF_Rsq, "\n",
+"\n --Predictive Performance \n",
+" Random Forests MSE = ", RF_MSE, "\n",
+" Random Forests RMSE = ", RF_RMSE, "\n",
+" Random Forests MAE = ", RF_MAE, "\n",
+" Random Forests MAPE = ", RF_MAPE, "\n")
+
+##
+## End of Final Complete Results
+##
+####################################################################################################################
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+####################################
+#
+# Plots for document
+#
+
+# Simple Linear Regression
+# Scatterplot X - Y
+
+graphs_path <- "Generated_Graphs"
+data <- read.csv("results/scenario4/random/allConfigurations.csv", sep="\t", header=T)
+cat("Initial size of data = ", dim(data), "\n")	
+data <- data[sample(nrow(data), 300), ] # Randomly choose 100 data points
+cat("Sampled size of data = ", dim(data), "\n")	
+attach(data)
+
+plot(data$Hops, data$Latency2, xlab="# of Hops", ylab="Network Latency (Seconds)", pch = 21, cex = 1, col = 1, bg = "black", cex.axis=1.5, cex.lab = 1.5)
+dev.copy2eps(file=paste(graphs_path,"/SimpleLinear-XversusY.eps", sep = ""))
+dev.new()
+
+plot(data$Hops, data$Latency2, xlab="# of Hops", ylab="Network Latency (Seconds)", pch = 21, cex = 1, col = 1, bg = "black", cex.axis=1.5, cex.lab = 1.5)
+lm <- lm(data$Latency2 ~ data$Hops, data = data)
+abline(lm)
+dev.copy2eps(file=paste(graphs_path,"/SimpleLinear-XversusY-fitted.eps", sep = ""))
+
+##
+## Feature Scaling
+##
+
+scale = function(x){
+ 	newX = (x - min(x))/(max(x) - min(x))
+	return (newX)
+}
+
+# Example
+plot(data$Hops, data$Latency2)
+dev.new()
+plot(scale(data$Hops), scale(data$Latency2))
+
+cor(data$Hops, data$Latency2)
+cor(scale(data$Hops), scale(data$Latency2))
+
+
+
+
+
+
+
+
+
+##
+## Plotting the Bias/Variance trade-off
+##
+	data <- read.csv("results/scenario3/random/allConfigurations.csv", sep="\t", header=T, nrows = 1000)
+	attach(data)
+
+	data$ID <- NULL			# Delete ID column
+	data$ShortestPath <- NULL	# Delete ShortestPath column
+
+	N <- 100			# number of observations per dataset 
+	K <- nrow(data) / 100		# number of datasets
+
+	cat("K =", K, " and N =", N, "\n")
+
+
+	# Response Variables: Delay	Delay2	Latency	Latency2	Success_Ratio	Energy
+	responses <- c(1, 2, 3, 4, 5, 6)
+	responses_names <- c("Delay", "Delay2", "Latency",  "Latency2", "Success_Ratio", "Energy")
+	
+	# Explanatory Variables: Hops	txPackets		LongestPath	Orchestrators	Neighbors	Distance
+	predictors <- c(7, 8, 9, 10, 11, 12, 13)
+	predictors_names <- c("Hops", "txPackets", "LongestPath", "Orchestrators", "Neighbors", "Paths", "Distance")
+
+# For all the considered models
+	
+lm1 = lm(Success_Ratio ~ Hops + txPackets + ShortestPath + LongestPath + Orchestrators + Neighbors + Distance)
+lm2 = lm(Success_Ratio ~ Hops + txPackets + LongestPath + Neighbors + Distance)
+lm3 = lm(Success_Ratio ~ Hops + txPackets + ShortestPath + Distance)
+
+	j = 1
+	models <- c (formula(training_set[,responses[j]] ~ Hops + txPackets + ShortestPath + LongestPath + Orchestrators + Neighbors + Distance), formula(training_set[,responses[j]] ~ Hops + Neighbors + Distance))
+
+for(m in 1:length(models)){
+ cat("============================= Tested Model = ", toString(models[m]), " ", j, " out of ", length(models), "\n")
+	for(j in 1:length(responses)){
+		cat("################ Response Variable = ", responses_names[j], " ################## \n")
+		train_error_vector <- c()
+		test_error_vector <- c()
+		test_set_vector <- c()
+		diff_test_y_vector <- c()
+		bias_vector <- c()
+
+		# Split the data into K datasets
+		for(i in 1:K){	
+			from <- 1 + (i - 1) * N
+			to <- i*N
+			cat("i = ", i , " data from = ", from, " to ", to, "\n")
+			cat("dim = ", dim(data[from : to,]), "\n")
+
+			dataset = data[from : to,]
+	
+			# Create training set (90%)
+			training_set = dataset[1:90,]
+			model = lm(models[[m]], data = training_set)
+
+			# Create test set (10%)
+			test_set = dataset[91:100,]
+			test_set_vector <- c(test_set_vector, test_set[,responses[j]])
+			 
+			# Predict the outcome of the training data
+			predicted_train <- predict(model, newdata = training_set)
+			# Predict the outcome of the testing data
+			predicted_test <- predict(model, newdata = test_set)
+
+			# Mean square error
+			train_error <- mean((predicted_train - training_set[,responses[j]])^2)
+			test_error <- mean((predicted_test - test_set[,responses[j]])^2)
+			
+			train_error_vector <- c(train_error_vector, train_error)
+			test_error_vector <- c(test_error_vector, test_error)
+
+			diff_test_y_vector <- c(diff_test_y_vector, test_error)
+		
+			cat("i = ", i, " average prediction = ", mean(predicted_test), " Bias = ", mean((predicted_test - test_set[,responses[j]])^2), " Variance = ", var(predicted_test),"\n")
+
+			cat("i = ", i, " Train error = ", train_error, " Test error = ", test_error, "\n")
+
+			bias_vector <- c(bias_vector, mean((predicted_test - test_set[,responses[j]])^2))
+		}
+
+		cat("i = ", i, " Mean Train error = ", mean(train_error_vector), " Mean Test error = ", mean(test_error_vector), "\n")
+
+	       	# variance(iD) = mean(var(yHatTest{iD},1));
+		# cat("Variance ", mean(var(test_set_vector)), "\n")
+		cat("Variance ", mean((train_error_vector - mean(train_error_vector))^2), "\n")
+  		# biasSquared(iD) = mean((mean(yHatTest{iD})-f(xTest)).^2);)
+		# cat("biasSquared ", mean(diff_test_y_vector), "\n")
+		cat("Average bias = ", mean(bias_vector), "\n")
+		cat("################################################################ \n\n\n")
+	}
+}
+
+
+##
+## Step 1: Read data and plot pairplots
+##
+	graphs_path <- "Generated_Graphs"
+	display_graphs <- 1
+
+	data <- read.csv("results/scenario4/random/allConfigurations.csv", sep="\t", header=T)
+	cat("Initial size of data = ", dim(data), "\n")	
+	data <- data[sample(nrow(data), 100), ] # Randomly choose 1000 data points
+	cat("Sampled size of data = ", dim(data), "\n")	
+
+	data$ID <- NULL			# Delete ID column
+	data$ShortestPath <- NULL	# Delete ShortestPath column
+	data$rxPackets <- NULL		# Delete rxPackets column
+	attach(data)
+
+	if ( display_graphs == 1) {
+		plot(data)
+		dev.copy2eps(file=paste(graphs_path,"/1-Scatterplot-InitData.eps", sep = ""))
+		dev.new()
+	}
+	
+	if ( display_graphs == 1) {
+		library(ellipse)
+		plotcorr(cor(data))
+		dev.copy2eps(file=paste(graphs_path,"/1-CorrelationEllipses-InitData.eps", sep = ""))
+		dev.new()
+
+		library(corrplot)
+		corrplot(cor(data), method = "number" , tl.cex = 0.5)
+		dev.copy2eps(file=paste(graphs_path,"/1-CorrelationTable-InitData.eps", sep = ""))
+		dev.new()
+	}
+
+	# Response Variables: Delay	Delay2	Latency	Latency2	Success_Ratio	Energy
+	responses <- c(1, 2, 3, 4, 5, 6)
+	responses_names <- c("Delay", "Delay2", "Latency",  "Latency2", "Success_Ratio", "Energy")
+	
+	# Explanatory Variables: Hops	txPackets	ShortestPath	LongestPath	Orchestrators	Neighbors	Distance
+	predictors <- c(7, 8, 9, 10, 11, 12, 13)
+	predictors_names <- c("Hops", "txPackets", "LongestPath", "Orchestrators", "Neighbors", "Paths", "Distance")
+
+	# For each response variable plot pair scatterplots, regression lines and histograms (VERY NICE!)
+	if ( display_graphs == 1) {
+		for(i in 1:length(responses)){	
+			pairs(cbind(data[,responses[i]], data[,min(predictors):max(predictors)]), 
+			panel=function(x,y){
+			points(x,y) 
+			abline(lm(y~x), lty=2) 
+			lines(lowess(x,y))
+			}, 
+			diag.panel=function(x){ 
+			par(new=T) 
+			hist(x, main="", axes=F, nclass=12)
+			}
+			)
+
+			dev.copy2eps(file=paste(graphs_path,"/1-Scatterplot-Histogram-",responses_names[i],".eps", sep = ""))
+			dev.new()
+		}
+	}
+
+##
+## Step 2: Variable transformation
+##
+
+	if ( display_graphs == 1) {
+		# Checking for normality
+		for(i in 1:length(predictors)){
+			qqnorm(data[,predictors[i]], main = paste("Predictor Variable = ", predictors_names[i]))
+			dev.new()
+			hist(data[,predictors[i]], main = paste("Predictor Variable = ", predictors_names[i]))
+			dev.new()
+			hist(log(data[,predictors[i]]), main = paste("Log Predictor Variable = ", predictors_names[i]))
+			dev.new()
+		}
+	}
+
+	# Moderately positive skewness
+	Hops = log(Hops)		
+	LongesthPath = log(LongesthPath)
+	Neighbors = log(Neighbors)		
+	# txPackets substantially negatively skewed
+	txPackets = hist(sqrt(max(txPackets) + 1 - txPackets))
+	Paths = hist(sqrt(max(Paths) + 1 - Paths))
+	
+	# Normal distributions for the following variables:
+	# 1) Distance
+	# 2) Orchestrators
+
+	# Replot for each response variable plot pair scatterplots, regression lines and histograms (VERY NICE!)
+	if ( display_graphs == 1) {
+		for(i in 1:length(responses)){	
+			pairs(cbind(data[,responses[i]], data[,min(predictors):max(predictors)]), 
+			panel=function(x,y){
+			points(x,y) 
+			abline(lm(y~x), lty=2) 
+			lines(lowess(x,y))
+			}, 
+			diag.panel=function(x){ 
+			par(new=T) 
+			hist(x, main="", axes=F, nclass=12)
+			}
+			)
+				dev.copy2eps(file=paste(graphs_path,"/1-Scatterplot-Histogram-",responses_names[i],".eps", sep = ""))
+				dev.new()
+		}
+	}
+##
+## Step 3: Remove multivariate outliers
+##
+	newData = remove_outliers(data, 0.6)
+	attach(newData)
+
+	if ( display_graphs == 1) {
+		plotcorr(cor(data), main = "Correlation ellipses for the trimmed data set")
+		dev.copy2eps(file=paste(graphs_path,"/2-CorrelationEllipses-TrimmedData.eps", sep = ""))
+		dev.new()
+	}
+
+	if ( display_graphs == 1) {
+		plot(newData, main = "Scatterplots for the trimmed data set")
+		dev.copy2eps(file=paste(graphs_path,"/2-Scatterplot-TrimmedData.eps", sep = ""))
+		dev.new()
+	}
+
+##
+## Fitting
+##
+
+	#
+	# Checking for (two-way) Interaction Among Predictors 
+	#
+	Hops2 <- factor(Hops)
+	interaction.plot(Hops2, Orchestrators, Energy, type="b", col=c(1:3), leg.bty="o", leg.bg="beige", lwd=2, pch=c(18,24,22), xlab="first factor", ylab="third factor", main="Interaction Plot")
+
+	#
+	# Checking relative importance of variables
+	#
+	library(relaimpo)
+	lm2 = lm(Latency2 ~ Hops + txPackets + LongestPath + Orchestrators + Neighbors + Distance, data = data)
+	metrics <- calc.relimp(lm2)
+	plot(metrics)
+	metrics <- calc.relimp(lm2,  type = c("lmg", "first", "last", "betasq", "pratt"))
+	plot(metrics)
+
+	#####
+	##### Consider categorial variables
+	#####
+	# y$Orchestrators <- factor(y$Orchestrators)
+
+	##
+	## Plot Regression Diagnostics
+	##
+
+	# diagnostic plots
+	fit = lm(Latency2 ~ Hops + Distance, data = data)
+	layout(matrix(c(1,2,3,4),2,2)) # optional 4 graphs/page
+	plot(fit)
+	dev.new()
+	
+	#
+	# Assumption 1: Constant Variance
+	#
+		# 1
+		# Residual plot Yhat vs error
+		par(las=1)
+		# horizontal style of axis labels
+		plot(fitted(fit), residuals(fit), xlab="Fitted", ylab="Residuals")
+		abline(h=0, col="red")
+		# 2
+		# Absolute Residual plot Yhat vs error
+		plot(fitted(fit), abs(residuals(fit)), xlab="Fitted", ylab="|Residuals|")
+
+	#
+	# Assumption 3: Non-normality and Heteroscedasticity
+	#
+
+		# 1
+		# Normality of Residuals
+		# qq plot for studentized resid
+		qqPlot(fit, main="QQ Plot")
+		# distribution of studentized residuals
+		library(MASS)
+		sresid <- studres(fit)
+		hist(sresid, freq=FALSE,
+		   main="Distribution of Studentized Residuals")
+		xfit<-seq(min(sresid),max(sresid),length=40)
+		yfit<-dnorm(xfit)
+		lines(xfit, yfit) 
+
+		# 2
+		par(mfrow=c(1,1))
+		hist(residuals(fit))
+		boxplot(residuals(fit))
+		
+		# 3 
+		# The null hypothesis is that the residuals have a normal distribution. The p-value of the test
+		# statistic is large in this example. It thus follows that the null hypothesis is not rejected.
+		shapiro.test(residuals(fit))
+
+	#
+	# Assumption 3: Independent errors
+	#
+		# 1
+		# Scatterplots	
+		# 2
+		# Test for Autocorrelated Errors
+		durbinWatsonTest(fit)
+
+	#
+	# Global test of model assumptions
+	#
+	library(gvlma)
+	gvmodel <- gvlma(fit)
+	summary(gvmodel) 
+
+
+	fullModels <- list()
+	fullModels_initial <- list()
+
+	for(i in 1:length(responses)){
+		# Trimmed data
+		fit <- lm(newData[,responses[i]] ~ Hops + txPackets + LongestPath + Orchestrators + Neighbors + Distance, data = newData)
+		summary(fit) # show results of the trimmed data set
+		fullModels <- c(fullModels, summary(fit))
+
+		if ( display_graphs == 1) {
+			# diagnostic plots
+			layout(matrix(c(1,2,3,4),2,2)) # optional 4 graphs/page
+			plot(fit)
+			dev.copy2eps(file=paste(graphs_path,"/3-FullM-Diagnostics-TrimData-",responses_names[i],".eps", sep = ""))
+			dev.new()
+		}
+
+		# Initial data
+		fit_initial <- lm(data[,responses[i]] ~ Hops + txPackets + ShortestPath + LongestPath + Orchestrators + Neighbors + Distance, data = data)
+		summary(fit_initial) # show results of the initial data set
+		fullModels_initial <- c(fullModels_initial, summary(fit_initial))
+
+		if ( display_graphs == 1) {
+			# diagnostic plots
+			layout(matrix(c(1,2,3,4),2,2)) # optional 4 graphs/page
+			plot(fit_initial)
+			dev.copy2eps(file=paste(graphs_path,"/3-FullM-Diagnostics-InitData-",responses_names[i],".eps", sep = ""))
+			dev.new()
+		}
+	}
+
+	# Estimated regression coefficients, their standard errors, t-values and p-values returned as a matrix
+	# coef(summary(m))
+
+	# Compare models example
+	# fit1 <- lm(response ~ Hops + txPackets + ShortestPath + LongestPath + Orchestrators + Neighbors + Distance, data = newData)
+	# fit2 <- lm(response ~ Hops + txPackets + ShortestPath, data = newData)
+	# anova(fit1, fit2) 
+
+##
+## Variable Selection
+##
+
+#
+# 1st choice: Stepwise Regression
+#
+	
+	library(MASS)
+
+	for(i in 1:length(responses)){
+		cat("################ Response Variable = ", responses_names[i], " ################## \n")
+		fullModel <- lm(newData[,responses[i]] ~ Hops + txPackets + ShortestPath + LongestPath + Orchestrators + Neighbors + Distance, data = newData)
+		step <- stepAIC(fullModel, direction="both")
+		step$anova # display results 
+
+		# Full model with pair-wise interactions
+		fullModelInteractions <- lm(newData[,responses[i]] ~ 
+								Hops + Hops:txPackets + Hops:ShortestPath + Hops:LongestPath + Hops:Orchestrators + Hops:Neighbors + Hops:Distance +
+								txPackets + txPackets:ShortestPath + txPackets:LongestPath + txPackets:Orchestrators + txPackets:Neighbors + txPackets:Distance +
+								ShortestPath + ShortestPath:LongestPath + ShortestPath:Orchestrators + ShortestPath:Neighbors + ShortestPath:Distance +
+								LongestPath + LongestPath:Orchestrators + LongestPath:Neighbors + LongestPath:Distance + 
+								Orchestrators + Orchestrators:Neighbors + Orchestrators:Distance +
+								Neighbors + Neighbors:Distance +
+								Distance, data = newData)
+		step <- stepAIC(fullModelInteractions, direction="both")
+		step$anova # display results 
+		cat("################################################################ \n\n\n")
+	}
+
+#
+# 2nd choice: All Subsets Regression
+#	
+
+	library(leaps)
+	
+	for(i in 1:length(responses)){
+		leaps<-regsubsets(newData[,responses[i]] ~ Hops + txPackets + LongestPath + Orchestrators + Neighbors + Distance, data = newData, nbest = 10)
+		# view results
+		summary(leaps)
+
+		# plot a table of models showing variables in each model.
+		# models are ordered by the selection statistic.
+		if ( display_graphs == 1) {
+			# Use R squared
+			plot(leaps,scale="r2")
+			dev.copy2eps(file=paste(graphs_path,"/5-Allsubsets-Rsquared-TrimData-",responses_names[i],".eps", sep = ""))
+			dev.new()
+
+			# Use Mallows' Cp
+			plot(leaps,scale="Cp")
+			dev.copy2eps(file=paste(graphs_path,"/6-Allsubsets-Cp-TrimData-",responses_names[i],".eps", sep = ""))
+			dev.new()
+
+			# Use Adjusted R squared
+			#plot(leaps,scale="adjr2")
+			#dev.copy2eps(file=paste(graphs_path,"/7-Allsubsets-AdjRsquared-TrimData-",responses_names[i],".eps", sep = ""))
+			#dev.new()
+
+			# Use Bayesian information criterion (BIC)
+			#plot(leaps,scale="bic")
+			#dev.copy2eps(file=paste(graphs_path,"/8-Allsubsets-BIC-TrimData-",responses_names[i],".eps", sep = ""))
+			#dev.new()
+
+			# plot statistic by subset size
+			#library(car)
+			#subsets(leaps, statistic="rsq") 
+			#dev.copy2eps(file=paste(graphs_path,"/9-Allsubsets-Statistic-Rsquared-TrimData-",responses_names[i],".eps", sep = ""))
+			#dev.new()
+		}
+	}
+
+#
+# 3rd choice: Brute force
+#
+
+	df1 = newData[,min(predictors):max(predictors)]
+	# create the combinations of the 7 independent variables
+	library(foreach)
+	xcomb <- foreach(i=1:length(predictors), .combine=c) %do% {combn(names(df1), i, simplify=FALSE) }
+
+	library(e1071)
+	binarycomb = bincombinations(length(predictors))
+	binarycomb = binarycomb[-1,]	# apart from the first line
+
+	# Store all the possible linear models
+	allModels <- matrix() # ncol = number of response variables, nrow = number of possible models per response variable
+
+	# For each response variable, create the formulas
+	for(i in 1:length(responses)){
+		cat("################ Response Variable = ", responses_names[i], " ################## \n")
+		formlist <- lapply(xcomb, function(l) formula(paste(responses_names[i], paste(l, collapse="+"), sep="~")))
+		print(formlist[1])
+		as.character(formlist)
+		
+		# R squared
+		models.r.sq <- sapply(formlist, function(i) summary(lm(i, data = newData))$r.squared)
+		# adjusted R squared
+		models.adj.r.sq <- sapply(formlist, function(i) summary(lm(i, data = newData))$adj.r.squared)
+		# MSEp
+		models.MSEp <- sapply(formlist, function(i) anova(lm(i, data = newData))['Mean Sq']['Residuals',])
+
+		# Full model MSE
+		MSE <- anova(lm(formlist[[length(formlist)]], data = newData))['Mean Sq']['Residuals',]
+
+		# Mallow's Cp
+		models.Cp <- sapply(formlist, function(i) {
+		SSEp <- anova(lm(i, data = newData))['Sum Sq']['Residuals',]
+		mod.mat <- model.matrix(lm(i, data = newData))
+		n <- dim(mod.mat)[1]
+		p <- dim(mod.mat)[2]
+		c(p,SSEp / MSE - (n - 2*p))
+		})
+
+		df.model.eval <- data.frame(model=as.character(formlist), p=models.Cp[1,],
+		r.sq=models.r.sq, adj.r.sq=models.adj.r.sq, MSEp=models.MSEp, Cp=models.Cp[2,])
+		
+		if ( display_graphs == 1) {
+			plot(df.model.eval)
+			dev.copy2eps(file=paste(graphs_path,"/10-ModelComparison-",responses_names[i],".eps", sep = ""))
+			dev.new()
+
+			plot(models.Cp[1,], models.Cp[2,])
+			text(models.Cp[1,], models.Cp[2,], apply(binarycomb, 1, paste, collapse=" "), cex=0.7, pos = 4, col = "red")
+			x <- c(1:max(models.Cp[1,])); y <- x
+			abline(x,y)
+			dev.copy2eps(file=paste(graphs_path,"/10-ModelComparison-Cp-",responses_names[i],".eps", sep = ""))
+			dev.new()
+		}
+		cat("################################################################ \n\n\n")
+	}
+
+
+
+	# Generate all the possible models with their transformations and polynomials
+
+
+##
+## Estimated error of prediction
+##
+
+	lm = lm(Latency2 ~ Hops)
+
+	# If you need predictions for other values of the explanatory variable,
+	# you should set up a new data frame, which contains a variable with
+	# the same name as is the explanatory variable in the linear model.
+	u <- seq(min(Hops), max(Hops), by = 1)
+	newdf <- data.frame(Hops = u)
+	
+	predictions <- coef(lm)[1] + coef(lm)[2] * u
+
+	#
+	# Prediction bands - Prediction confidence intervals
+	#
+
+	pp <- predict(lm, interval = "pred", newdata = pred.frame) # Prediction intervals for a new observation: wider intervals
+	pc <- predict(lm, interval = "conf", newdata = pred.frame) # Confidence interval for the mean response: narrower limits
+
+	
+	if ( display_graphs == 1) {
+		plot(Hops, Latency2)
+		matlines(pred.frame$Hops, pp, lty = c(1,2,2), col="black")
+		matlines(pred.frame$Hops, pc, lty = c(1,3,3), col="black")
+	}
+
+##
+## Model Assessment using cross-validation
+##
+
+
+##
+## Cross-validation  approach to selecting model complexity (# of parameters)
+##
+
+	library(DAAG)
+
+	# Store the mean square errors for each response variable for all the considered models
+	allMSs <- matrix(0, ncol = length(responses), nrow = 0) # ncol = number of response variables, nrow = number of models in comparison
+
+	cat("Total CV tested models: ", length(formlist), "\n")
+	
+	responses <- c(1, 2, 3, 4, 5, 6)
+	responses_names <- c("Delay", "Delay2", "Latency",  "Latency2", "Success_Ratio", "Energy")
+	
+	for(j in 1:length(formlist)) {
+		# Store the mean square errors for each response variable for the current tested model
+		meanSquare <- c() 
+		for(i in 1:length(responses)){
+			formlist <- lapply(xcomb, function(l) formula(paste(responses_names[i], paste(l, collapse="+"), sep="~")))
+			cat("============================= Tested Model = ", toString(formlist[j]), " ", j, " out of ", length(formlist), "\n")
+			cat("################ Response Variable = ", responses_names[i], " \n")
+			response = newData[,responses[i]]
+			cv = CVlm(df = newData, form.lm = formula(formlist[[j]]), plotit = "Observed", m = 10, printit = FALSE)
+			#dev.copy2eps(paste(graphs_path,"/10-CV-AdjRsquared-TrimData-",responses_names[i],".eps", sep = ""))
+			#dev.new()
+			MSE <- attr(cv, "ms")
+			meanSquare <- cbind(meanSquare, MSE)
+		}
+
+		# print(meanSquare)
+		allMSs <- rbind(allMSs, meanSquare)
+		cat("======================================================================================================== \n\n")
+	}
+	
+	print(allMSs)
+	
+	#
+	# For each response variable find the best model
+	#
+	for(i in 1:length(responses)){
+		formlist <- lapply(xcomb, function(l) formula(paste(responses_names[i], paste(l, collapse="+"), sep="~")))
+		cat("################ Response Variable = ", responses_names[i], " \n")
+		bestIndexModel <- which( allMSs[,i] == min(allMSs[,i]))
+		for(j in 1:length(bestIndexModel)){
+			if ( bestIndexModel[j] <= dim(binarycomb)[1])
+			cat(j, "-th Best = ", bestIndexModel[j], " and model = ", toString(formlist[bestIndexModel[j]]), " with error = ", allMSs[bestIndexModel[j],i],"\n")
+		}
+	}
+	
+	average_MSE <- c(0, 0, 0, 0, 0, 0, 0)	# Store the average mean square error per size of model
+	counters <- c(0, 0, 0, 0, 0, 0, 0)	# Counts the number of models per model complexity
+	one_counters <- c()			# Counts the number of variables per possible model
+	
+	#	
+	# Calculates the MSE per model complexity
+	#
+	for(j in 1:length(formlist)) {
+		cat("Model ", j , " has ", sum(binarycomb[j,] ), " number of variables! \n")
+		index <- sum(binarycomb[j,])
+		cat("Old MSE = ",  average_MSE[index], " + new MS = ", allMSs[j], "\n")
+		average_MSE[index] <- average_MSE[index] + allMSs[j]
+		counters[index] <- counters[index] + 1
+		cat("New MSE = ",  average_MSE[index], " and counters = ", counters[index], " new average MSE = ", average_MSE[index]/counters[index], "\n")
+		one_counters <- c(one_counters, sum(binarycomb[j,] ))
+	}
+	
+	#	
+	# For each response variable find the best models
+	#
+	best_models <- c()
+	for(i in 1:length(responses)){
+		best_models_per_response <- c()	# In this array store the best models of all complexities for a response
+
+		for(k in 1:max(one_counters)) {
+			min <- 1000
+		
+			# Find the best model for each model size
+			for(j in 1:dim(allMSs)[1]) {
+				if ( k == sum(binarycomb[j,] ))
+					if ( allMSs[j,i] < min) {
+						min <- allMSs[j,i]
+					}
+			}
+
+			best_models_per_response <- c(best_models_per_response, min)
+		}
+		
+		best_models <- rbind(best_models, best_models_per_response)
+	}
+
+	#
+	# Plot Bias-Variance Trade-off by plotting the best model per model complexity
+	#
+	for(i in 1:length(responses)){
+		# 
+		plot(one_counters, allMSs[,i], xlab = "Number of Model Variables", ylab = "Mean Square Error", main = paste("Bias-Variance Trade-off", responses_names[i]), col = "blue", lwd = 1.5) 
+
+		lines(best_models[i,], col = "blue", lwd = 2.5)
+		legend(4.3, 0.3, # places a legend at the appropriate place 
+			c("Best Models Error"), # puts text in the legend
+			lty=c(1,1), # gives the legend appropriate symbols (lines)
+			lwd=c(2.5), col=c("blue")) # gives the legend lines the correct color and width
+	
+		dev.copy2eps(file=paste(graphs_path,"/12-VarianceVsBiasTradeoff-",responses_names[i],".eps", sep = ""))
+		dev.new()
+	}
+	
+	#
+	# Average MSE per model complexity
+	#
+	for(j in 1:length(average_MSE)) {
+		index <- sum(binarycomb[j,])
+		cat("Model size = ", j , " has average MSE = ",  average_MSE[index]/counters[index], " and ", j, " number of variables! \n")
+	}
+
+
+#####################
+#
+# Try to integrate together the testing of all models and the computation of Bias-Variance of all the models
+#
+
+	data <- read.csv("results/scenario3/random/allConfigurations.csv", sep="\t", header=T, nrows = 1000)
+	attach(data)
+
+	data$ID <- NULL		# Delete ID column
+
+	train_matrix <- c()
+	test_matrix <- c()
+	errors_matrix <- c()
+
+	ME_matrix <- c()
+	MAE_matrix <- c()
+	SME_matrix <- c()
+	RSME_matrix <- c()
+
+	#for(j in 1:length(formlist)) {
+	for(j in 1:5) {
+		cat("################ Response Variable = ", responses_names[i], " \n")
+		formlist <- lapply(xcomb, function(l) formula(paste(responses_names[i], paste(l, collapse="+"), sep="~")))
+		
+		train_array <- c()
+		test_array <- c()
+		error_array <- c()
+
+		ME_array <- c()
+		MAE_array <- c()
+		SME_array <- c()
+		RSME_array <- c()
+
+		for(i in 1:length(responses)){
+			formlist <- lapply(xcomb, function(l) formula(paste(responses_names[i], paste(l, collapse="+"), sep="~")))
+			cat("============================= Tested Model = ", toString(formlist[j]), " ", j, " out of ", length(formlist), "\n")
+			cat("################ Response Variable = ", responses_names[i], " \n")
+			model_list <- c(formula(formlist[[j]], data = newData))
+
+			# Create training set (90%)
+			training_set = data[1:900,]
+			training_set_response = data[1:900,responses[i]]
+			model = lm(formlist[[j]], data = training_set)
+
+			# Calculate training error
+			train_error = mean((training_set_response - predict(model, training_set))^2)
+
+			# Create test set (10%)
+			test_set = data[900:1000,]
+			test_set_response = data[900:1000,responses[i]]
+
+			# Calculate test error
+			test_error = mean((test_set_response - predict(model, training_set))^2)
+
+			train_array <- cbind(train_array, train_error)
+			test_array <- cbind(test_array, test_error)
+
+			cat("Train Error = ", train_error, " Test Error = ", test_error, "\n")
+			ME <- mean(test_set_response - predict(model, training_set))
+			MAE <- mean(abs(test_set_response - predict(model, training_set)))
+			MSE <- mean((test_set_response - predict(model, training_set))^2)
+			RMSE <- sqrt(mean((test_set_response - predict(model, training_set))^2))
+			
+			cat("ME = ", ME, "\n")
+			cat("MAE = ", MAE, "\n")
+			cat("MSE = ", MSE, "\n")
+			cat("RMSE = ", RMSE, "\n")
+			error_array <- rbind(error_array, ME, MAE, MSE, RMSE)
+			ME_array <- cbind(ME_array, ME)
+			MAE_array <- cbind(MAE_array, MAE )
+			SME_array <- cbind(SME_array, MSE )
+			RSME_array <- cbind(RSME_array, RMSE )
+			cat("======================================================================================================== \n\n")
+		}
+
+		train_matrix <- rbind(train_matrix, train_array)
+		test_matrix <- rbind(test_matrix, test_array)
+		errors_matrix <- cbind(errors_matrix, error_array)
+		ME_matrix <- rbind(ME_matrix, ME_array)
+		MAE_matrix <- rbind(MAE_matrix, MAE_array)
+		SME_matrix <- rbind(SME_matrix, SME_array)
+		RSME_matrix <- rbind(RSME_matrix, RSME_array)
+	}
+
+	# Find the best model (minimum error) for each response variable
+	for(i in 1:length(responses)){
+		min_train <- which(train_matrix[i,] == min(train_matrix[i,]), arr.ind = TRUE)
+		min_test <- which(test_matrix[i,] == min(test_matrix[i,]), arr.ind = TRUE)
+		cat("Min Train Error = ", min_train[1], " Min Test Error = ", min_test[1], "\n")
+		
+		par(mar=c(5.1, 4.1, 4.1, 8.1), xpd=TRUE)
+		plot(one_counters,train_matrix[i,], xlab = "# of Model Variables", ylab = "Mean Square Error", main = paste("Bias-Variance Trade-off", responses_names[i]), col = "blue", lwd = 1.5, ylim=c(min(train_matrix[i,], test_matrix[i,]), max(train_matrix[i,], test_matrix[i,]))) 	
+		points(one_counters,test_matrix[i,], col = "red", lwd = 1.5) 
+
+		legend('topright', inset=c(-0.3,0),
+			c("Train Error", "Test Error"), # puts text in the legend
+			pch = c(21,22), #lty=c(1,1), # gives the legend appropriate symbols (lines)
+			pt.bg = c("blue","red"),
+			col=c("blue", "red")) # gives the legend lines the correct color and width
+
+		#dev.copy2eps(file=paste(graphs_path,"/13-VarianceVsBiasTradeoffTest-",responses_names[i],".eps", sep = ""))
+		dev.new()
+	}
+
+
+
+
+
+
+
+
+	allMSs <- matrix(0, ncol = length(responses), nrow = 0) # ncol = number of response variables, nrow = number of models in comparison
+
+	cat("Total CV tested models: ", length(formlist), "\n")
+	
+	bias_array <- c()	# Store the average bias per model		
+	variance_array <- c()	# Store the average variance per model
+
+	#for(j in 1:length(formlist)) {
+	for(j in 1:1) {
+		bias_per_response <- c()		# Store the average bias per response
+		variance_per_response <- c() 		# Store the average variance per response
+
+		# Store the mean square errors for each response variable for the current tested model
+		meanSquare <- c() 
+		for(i in 1:length(responses)){
+			#formlist <- lapply(xcomb, function(l) formula(paste(responses_names[i], paste(l, collapse="+"), sep="~")))
+			cat("============================= Tested Model = ", toString(formlist[j]), " ", j, " out of ", length(formlist), "\n")
+			cat("################ Response Variable = ", responses_names[i], " \n")
+			response = newData[,responses[i]]
+			cv = CVlm(df = newData, form.lm = formula(formlist[[j]]), plotit = "Observed", m = 10, printit = FALSE)
+			#dev.copy2eps(paste(graphs_path,"/10-CV-AdjRsquared-TrimData-",responses_names[i],".eps", sep = ""))
+			#dev.new()
+			meanSquare <- c(meanSquare, attr(cv, "ms"))
+
+			cat("xxxxxxxxxxxxxxxxxxxxxxxxx Manual Cross Validation xxxxxxxxxxxxxxxxxxxxxxxxx \n")
+			train_error_vector <- c()
+			test_error_vector <- c()
+			test_set_vector <- c()
+			diff_test_y_vector <- c()
+			bias_vector <- c()
+
+			# Split the data into K datasets
+			for(m in 1:K){	
+				from <- 1 + (m - 1) * N
+				to <- m*N
+				cat("m = ", m , " data from = ", from, " to ", to, "\n")
+				cat("dim = ", dim(data[from : to,]), "\n")
+
+				dataset = data[from : to,]
+	
+				# Create training set (90%)
+				training_set = dataset[1:90,]
+				model = lm(formlist[[j]], data = training_set)
+
+				# Create test set (10%)
+				test_set = dataset[91:100,]
+				test_set_vector <- c(test_set_vector, test_set[,responses[i]])
+				 
+				# Predict the outcome of the training data
+				predicted_train <- predict(model, newdata = training_set)
+				# Predict the outcome of the testing data
+				predicted_test <- predict(model, newdata = test_set)
+
+				# Mean square error
+				train_error <- mean((predicted_train - training_set[,responses[i]])^2)
+				test_error <- mean((predicted_test - test_set[,responses[i]])^2)
+			
+				train_error_vector <- c(train_error_vector, train_error)
+				test_error_vector <- c(test_error_vector, test_error)
+
+				diff_test_y_vector <- c(diff_test_y_vector, test_error)
+		
+				cat("m = ", m, " average prediction = ", mean(predicted_test), " Bias = ", mean((predicted_test - test_set[,responses[i]])^2), " Variance = ", var(predicted_test),"\n")
+
+				cat("m = ", m, " Train error = ", train_error, " Test error = ", test_error, "\n")
+
+				bias_vector <- c(bias_vector, mean((predicted_test - test_set[,responses[i]])^2))
+			}
+
+			cat("Variance ", mean((train_error_vector - mean(train_error_vector))^2), "\n")
+			cat("Average bias = ", mean(bias_vector), "\n")
+			bias_per_response <- cbind(bias_per_response, mean(bias_vector))
+			variance_per_response <- cbind(variance_per_response, mean((train_error_vector - mean(train_error_vector))^2))
+			cat("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n\n\n")
+		}
+
+		bias_array <- rbind(bias_array, bias_per_response)
+		variance_array <- rbind(variance_array, variance_per_response)
+		
+		# print(meanSquare)
+		allMSs <- rbind(allMSs, meanSquare)
+		cat("======================================================================================================== \n\n")
+	}
+
+
+###############
+#
+# d = 1
+
+
+###############
+#
+# d = 2
+
+# Create function to make histogram with density superimposed
+panel.hist <- function(x, ...) {
+	# Set user coordinates of plotting region
+	usr <- par("usr"); on.exit(par(usr))
+	par(usr = c(usr[1:2], 0, 1.5))
+	par(new=TRUE)
+	# Do not start new plot
+	hist(x, prob=TRUE, axes=FALSE, xlab="", ylab="", main="", col="lightgray", nclass = 40)
+	lines(density(x, na.rm=TRUE))
+	# Add density curve
+}
+
+# Create function to compute and print R^2
+panel.r2 <- function(x, y, digits=2, cex.cor, ...) {
+	# Set user coordinates of plotting region
+	usr <- par("usr"); on.exit(par(usr))
+	par(usr = c(0, 1, 0, 1))
+	r <- cor(x, y, use="complete.obs")**2 # Compute R^2
+	txt <- format(c(r, 0.123456789), digits=digits)[1]
+	if(missing(cex.cor)) cex.cor <- 1/strwidth(txt)
+	text(0.5, 0.5, txt, cex = cex.cor * r)
+}
+
+pairs(~ Latency2 + Hops + LongestPath + Distance, data=data, lower.panel=panel.smooth, upper.panel=panel.r2, diag.panel=panel.hist)
+
+
+
+
+
+
+
+#
+# Plot Polynomial Regression
+#
+
+plot(Energy ~ Orchestrators, data = data)
+fit1 = lm(Energy ~ Orchestrators, data) #fits a linear model
+plot(Energy ~ Orchestrators, data = data)
+abline(fit1) #puts line on plot
+fit2 = lm(Energy ~ I(Orchestrators^2) + Orchestrators, data) #fits a model with a quadratic term
+fit2line = predict(fit2, data.frame(Orchestrators = 1:5))
+lines(1:5 ,fit2line, col=2) #puts line on plot
+
+
+
+
+data2 = data[1:500,]
+plot(data2$Energy ~ data2$LongestPath, data = data2)
+fit1 = lm(data2$Energy ~ data2$LongestPath, data = data2) #fits a linear model
+plot(data2$Energy ~ data2$LongestPath, data = data2)
+abline(fit1) #puts line on plot
+fit2 = lm(data2$Energy ~ I(data2$LongestPath^2) + data2$LongestPath, data = data2) #fits a model with a quadratic term
+fit2line = predict(fit2, data.frame(LongestPath = min(data2$LongestPath):max(data2$LongestPath)))
+lines(min(data2$LongestPath):max(data2$LongestPath),fit2line, col=2) #puts line on plot
+
+
+
+#
+# Splines
+#
+
+data2 = data[1:500,]
+y = data2$Energy 
+x = data2$LongestPath
+number.knots <- 1
+spacings <- seq(from=min(x),to=max(x),length=number.knots+2)[2:(number.knots+1)]
+regr.spline <- lm(y ~ bs(x, df = NULL, knots=spacings, degree = 3, intercept=T))
+
+x.values <- seq(from=min(x), to=max(x), length=200)
+plot(x, y); lines(x.values, predict(regr.spline, data.frame(x=x.values)))
+
+
+# example 
+library(splines)
+K=c(14,20)
+plot(cars)
+reg=lm(dist~bs(speed,knots=c(K),degree=2),data=cars)
+u=seq(4,25,by=.1)
+B=data.frame(speed=u)
+Y=predict(reg,newdata=B)
+lines(u,Y,lwd=2,col="red")
+summary(reg)
+
+# 1 knot
+K=c(14)
+reg=lm(dist~bs(speed,knots=c(K),degree=1),data=cars)
+summary(reg)
+
+B=function(x,j,n,K){
+b=0
+a1=a2=0
+if(((K[j+n+1]>K[j+1])&(j+n<=length(K))&(n>0))==TRUE){a2=(K[j+n+1]-x)/
+         (K[j+n+1]-K[j+1])*B(x,j+1,n-1,K) }
+if(((K[j+n]>K[j])&(n>0))==TRUE){a1=(x-K[j])/
+         (K[j+n]-K[j])*B(x,j,n-1,K)}
+if(n==0){ b=((x>K[j])&(x<=K[j+1]))*1 }
+if(n>0){  b=a1+a2}
+return(b)
+}
+
+# for splines of degree 1
+u=seq(0,1,by=.01)
+plot(u,B(u,1,1,c(0,.4,1,1)),lwd=2,col="red",type="l",ylim=c(0,1))
+lines(u,B(u,2,1,c(0,.4,1,1)),lwd=2,col="blue")
+abline(v=c(0,.4,1),lty=2)
+
+# for splines of degree 2
+u=seq(0,1,by=.01)
+plot(u,B(u,1,2,c(0,0,.4,1,1,1)),lwd=2,col="red",type="l",ylim=c(0,1))
+lines(u,B(u,2,2,c(0,0,.4,1,1,1)),lwd=2,col="blue")
+lines(u,B(u,3,2,c(0,0,.4,1,1,1)),lwd=2,col="green")
+abline(v=c(0,.4,1),lty=2)
+
+u0=seq(0,1,by=.01)
+v=reg$coefficients[2]*u0+reg$coefficients[1]
+x1=seq(min(cars$speed),K,length=length(u0))
+lines(x1,v,col="green",lwd=2)
+u0=seq(0,1,by=.01)
+v=(reg$coefficients[3]-reg$coefficients[2])*u0+ reg$coefficients[1]+reg$coefficients[2]
+x2=seq(K,max(cars$speed),length=length(u0))
+lines(x2,v,col="blue",lwd=2)
+
+# Example for splines of degree 1 and 1 knot point
+plot(cars)
+reg=lm(dist~bs(speed,knots=c(K),degree=1),data=cars)
+k=(K-min(cars$speed))/(max(cars$speed)-min(cars$speed))
+u0=seq(0,1,by=.01)
+v=reg$coefficients[1]+
+  reg$coefficients[2]*B(u0,1,1,c(0,k,1,1))+
+  reg$coefficients[3]*B(u0,2,1,c(0,k,1,1))
+lines(min(cars$speed)+u0*(max(cars$speed)-min(cars$speed)), v,col="purple",lwd=2)
+abline(v=K,lty=2,col="red")
+
+# Example for splines of degree 1 and 2 knot points
+K=c(14,20)
+plot(cars)
+reg=lm(dist~bs(speed,knots=c(K),degree=1),data=cars)
+u=seq(4,25,by=.1)
+B=data.frame(speed=u)
+Y=predict(reg,newdata=B)
+lines(u,Y,lwd=2,col="red")
+abline(v=K,lty=2,col="red")
+
+# Basis function with two plots
+u=seq(0,1,by=.01)
+plot(u,B(u,1,1,c(0,.4,.7,1)),lwd=2,col="red",type="l",ylim=c(0,1))
+lines(u,B(u,2,1,c(0,.4,.7,1,1)),lwd=2,col="blue")
+lines(u,B(u,3,1,c(0,.4,.7,1,1)),lwd=2,col="green")
+abline(v=c(0,.4,.7,1),lty=2)
+
+plot(cars)
+reg=lm(dist~bs(speed,knots=c(K),degree=1),data=cars)
+k=(K-min(cars$speed))/(max(cars$speed)-min(cars$speed))
+u0=seq(0,1,by=.01)
+v=reg$coefficients[1]+
+  reg$coefficients[2]*B(u0,1,1,c(0,k,1,1))+
+  reg$coefficients[3]*B(u0,2,1,c(0,k,1,1))+
+  reg$coefficients[4]*B(u0,3,1,c(0,k,1,1))
+lines(min(cars$speed)+u0*(max(cars$speed)-min(cars$speed)), v,col="red",lwd=2)
+abline(v=K,lty=2,col="red")
+
+# Quadratic splines
+plot(cars)
+reg=lm(dist~bs(speed,knots=c(K),degree=2),data=cars)
+k=(K-min(cars$speed))/(max(cars$speed)-min(cars$speed))
+u0=seq(0,1,by=.01)
+v=reg$coefficients[1]+
+  reg$coefficients[2]*B(u0,1,2,c(0,0,k,1,1,1))+
+  reg$coefficients[3]*B(u0,2,2,c(0,0,k,1,1,1))+
+  reg$coefficients[4]*B(u0,3,2,c(0,0,k,1,1,1))+
+  reg$coefficients[5]*B(u0,4,2,c(0,0,k,1,1,1))
+lines(min(cars$speed)+u0*(max(cars$speed)-min(cars$speed)), v,col="purple",lwd=2)
+abline(v=K,lty=2,col="red")
+
+# Find best knots
+vk=seq(.05,.95,by=.05)
+SSR=matrix(NA,length(vk))
+for(i in 1:(length(vk))){
+k=vk[i]
+K=min(cars$speed)+k*(max(cars$speed)-min(cars$speed))
+reg=lm(dist~bs(speed,knots=c(K),degree=32),data=cars)
+SSR[i]=sum(residuals(reg)^2)
+}
+plot(vk,SSR,type="b",col="blue")
+
+
+data2 = data[1:500,]
+y = data2$Energy 
+x = data2$LongestPath
+
+library(splines)
+plot(x, y)
+mod.regspline <- lm(prestige ~ ns(income, knots=10000))
+fit <- predict(mod.regspline, data.frame(income=inc))
+lines(inc, fit, lwd=3)
+lines(loess.smooth(income, prestige, span=.6), lty=2, lwd=2) # cf.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#
+# Multivariate Adaptive Regression Splines (MARS) (STATUS: Working)
+#
+data <- read.csv("results/scenario3/random/allConfigurations.csv", sep="\t", header=T)
+attach(data)
+data2 = data[1:1000,]
+data2 = remove_outliers(data2, 0.7)
+
+test_size = 100
+train_data = data2[1:(dim(data2)[1] - test_size),]
+y = train_data$Energy 
+x1 = train_data$LongestPath
+x2 = train_data$Hops
+
+#old.par<-par(mfrow=c(2,2))
+
+## model 1 with s() smooths
+b1 <- gam(y ~ s(x1,x2))
+vis.gam(b1, ylab = "# of Hops", xlab = "Length of Longest Path", theta=-35)
+title("t.p.r.s")
+dev.new()
+
+## model 2 with te() smooths
+b2 <- gam(y ~ te(x1,x2))
+vis.gam(b2, ylab = "# of Hops", xlab = "Length of Longest Path", theta=-35)
+title("tensor product")
+dev.new()
+
+## model 3 te() smooths specifying margin bases
+b3 <- gam(y ~ te(x1,x2, bs=c("tp", "tp")))
+vis.gam(b3, ylab = "# of Hops", xlab = "Length of Longest Path", theta=-35)
+title("tensor product")
+par(old.par)
+
+# Prediction error (MSE)
+
+# Validation set
+data_validation = data[dim(data2)[1] - test_size:dim(data2)[1],]
+
+y_validation = data_validation$Energy 
+x1_validation = data_validation$LongestPath
+x2_validation = data_validation$Hops
+
+newd <- data.frame (x1 = x1_train, x2 = x2_train)
+y_b3_pred = predict.gam(b3, newd)
+
+# Calculate MSE for the splines model
+validation_error <- mean((y_b3_pred - y_train)^2)
+cat("B3 MSE = ", validation_error, "\n")
+
+# Fit a lm model
+lm <- lm(y ~ x1 + x2)
+y_lm_pred = predict(lm, newd)
+
+# Calculate MSE for the linear
+validation_error <- mean((y_lm_pred - y_train)^2)
+cat("LM MSE = ", validation_error, "\n")
+
+
+
+
+#
+# Classification and Regression Trees (CART) (STATUS: Working)
+#
+data <- read.csv("results/scenario3/random/allConfigurations.csv", sep="\t", header=T)
+attach(data)
+data2 = data[1:1000,]
+data2 = remove_outliers(data2, 0.7)
+
+test_size = 100
+train_data = data2[1:(dim(data2)[1] - test_size),]
+y = train_data$Energy 
+x1 = train_data$LongestPath
+x2 = train_data$Hops
+
+library(mboost)
+data2_rpart = rpart(y ~ x1 + x2, data = data2, control = rpart.control(minsplit=10))
+
+library("partykit")
+plot(as.party(data2_rpart), tp_args = list(id = FALSE))
+
+# See the cross-validation errors (e.g. the minimum)
+print(data2_rpart$cptable)
+# Find the optimum splitting of the tree
+opt <- which.min(data2_rpart$cptable[,"xerror"])
+
+cp <- data2_rpart$cptable[opt, "CP"]
+data2_prune <- prune(data2_rpart, cp = cp)
+plot(as.party(data2_prune), tp_args = list(id = FALSE))
+
+# Based on the model, we predict the response variable
+# on various prediction values 
+data2_pred <- predict(data2_prune, newdata = data2)
+
+# If the predictions were perfect, the observations should be on the 45 degrees line
+xlim <- range(y)
+plot(data2_pred ~ y, data = data2 , xlab = "Observed", ylad = "Predicted", xlim = xlim, ylim = xlim)
+abline(a = 0, b = 1)
+
+
+#
+# Ctree
+#
+library("party")
+
+data2_ctree <- ctree(y ~ x1 + x2, data = data2)
+plot(data2_ctree)
+
+#
+# Random Forest prediction
+#
+
+library(randomForest)
+fit <- randomForest(y ~ x1 + x2, data = data2)
+print(fit) # view results
+importance(fit) # importance of each predictor 
+
+
+
+
+
+#
+# Regression Tree Example
+#
+library(rpart)
+
+# grow tree
+tree_fit = rpart(y ~ x1 + x2, data = data2, method="anova")
+
+printcp(tree_fit) # display the results
+plotcp(tree_fit) # visualize cross-validation results
+summary(tree_fit) # detailed summary of splits
+
+# create additional plots
+par(mfrow=c(1,2)) # two plots on one page
+rsq.rpart(tree_fit) # visualize cross-validation results  
+
+# plot tree
+plot(tree_fit, uniform=TRUE, main="Regression Tree for Energy")
+text(tree_fit, use.n=TRUE, all=TRUE, cex=.8)
+
+# create attractive postcript plot of tree
+post(tree_fit, file = "tree2.ps", title = "Regression Tree for Energy")
+
+# prune the tree
+pfit<- prune(tree_fit, cp=0.01160389) # from cptable   
+
+# plot the pruned tree
+plot(pfit, uniform=TRUE, main="Pruned Regression Tree for Energy")
+text(pfit, use.n=TRUE, all=TRUE, cex=.8)
+post(pfit, file = "ptree2.ps",  title = "Pruned Regression Tree for Energy")
+
+
+
+
+
+
+
+
+#
+# Try to plot polynomial regression
+#
+data <- read.csv("results/scenario4/random/allConfigurations.csv", sep="\t", header=T)
+cat("Initial size of data = ", dim(data), "\n")	
+data <- data[sample(nrow(data), 5000), ] # Randomly choose 1000 data points
+cat("Sampled size of data = ", dim(data), "\n")	
+data = remove_outliers(data, 0.7)
+	
+	sample_size = 500
+	#dim(data)[1]
+
+	K = 10		# The number of folds
+	D = 5		# The maximum degree of the polynomial
+	fold_size = sample_size / K
+
+	# The size of the following matrices will be K (rows) X D (columns)
+	train_error_matrix <- c()
+	test_error_matrix <- c()
+
+	ME_matrix <- c()
+	MAE_matrix <- c()
+	SME_matrix <- c()
+	RSME_matrix <- c()
+
+	for(k in 1:K) {
+		from_train <- 1 + (k - 1) * fold_size
+		to_train <- fold_size * 0.5 + (k - 1) * fold_size
+
+		from_test <- fold_size * 0.5 + 1 + (k - 1) * fold_size
+		to_test <- fold_size + (k - 1) * fold_size
+
+		cat("Training set from ", from_train, " to ", to_train, "\n")
+		cat("Testing set from ", from_test, " to ", to_test, "\n")
+
+		x <- data[from_train:to_train,]$Hops
+		y <- data[from_train:to_train,]$Latency
+		y_test <- data[from_test:to_test,]$Latency
+		xx1 <- seq(min(x),max(x), length.out = 250)
+
+		col=c("blue", "green", "red", "purple", "orange", "grey", "black", "pink", "brown", "deepskyblue1")
+		names <- c()
+		train_error <- c()
+		test_error <- c()
+
+		ME_array <- c()
+		MAE_array <- c()
+		SME_array <- c()
+		RSME_array <- c()
+
+		degrees <- seq(1, D)
+
+		plot(x,y, main = "Fit of Models with Various Complexity")
+
+		for(j in 1:D) {
+			fit <- lm( y ~ poly(x,j) )
+			lines(xx1, predict(fit, data.frame(x=xx1)), col=col[j])
+			names <- c(names, paste("Poly = ", j))
+
+			train_error <- c(train_error, mean((predict(fit) - y)^2))
+			test_error <- c(test_error, mean((predict(fit) - y_test)^2))
+
+			pred.fit <- data.frame(predict(fit, interval = "pred", data.frame(x=xx1))) # Confidence interval
+			lines(xx1, pred.fit$lwr, lty = 2, col=col[j])
+			lines(xx1, pred.fit$upr, lty = 2, col=col[j])
+
+			conf.fit <- data.frame(predict(fit, data.frame(x=xx1), interval = "confidence", level=0.95)) # Confidence interval
+			lines(xx1, conf.fit$lwr, lty = 3, col=col[j])
+			lines(xx1, conf.fit$upr, lty = 3, col=col[j])
+
+			ME <- mean(y_test - predict(fit, data[from_train:to_train,]))
+			MAE <- mean(abs(y_test - predict(fit, data[from_train:to_train,])))
+			MSE <- mean((y_test - predict(fit, data[from_train:to_train,]))^2)
+			RMSE <- sqrt(mean((y_test - predict(fit, data[from_train:to_train,]))^2))
+			
+			cat("ME = ", ME, "\n")
+			cat("MAE = ", MAE, "\n")
+			cat("MSE = ", MSE, "\n")
+			cat("RMSE = ", RMSE, "\n")
+
+			ME_array <- rbind(ME_array, ME)
+			MAE_array <- rbind(MAE_array, MAE )
+			SME_array <- rbind(SME_array, MSE )
+			RSME_array <- rbind(RSME_array, RMSE )
+		}
+
+		ME_matrix <- cbind(ME_matrix, ME_array)
+		MAE_matrix <- cbind(MAE_matrix, MAE_array)
+		SME_matrix <- cbind(SME_matrix, SME_array)
+		RSME_matrix <- cbind(RSME_matrix, RSME_array)
+
+		legend("topleft",
+				names, # puts text in the legend
+				lty=c(1,1), # gives the legend appropriate symbols (lines)
+				lwd=c(2.5,2.5), col = col)
+		dev.new()
+
+		cat("------------ Train Error -------------- \n")
+		for(j in 1:D) {
+			cat("Poly =", j , " Train Error = ", train_error[j], "\n")
+		}
+
+		cat("------------ Test Error -------------- \n")
+		for(j in 1:D) {
+			cat("Poly =", j , " Test Error = ", test_error[j], "\n")
+		}
+
+		train_error_matrix <- rbind(train_error_matrix, train_error)
+		test_error_matrix <- rbind(test_error_matrix, test_error)
+	}
+
+	cat("------------ Average Train Error -------------- \n")
+	for(j in 1:K) {
+		cat("Poly =", j , " Train Error = ", mean(train_error_matrix[,j]), "\n")
+	}
+
+	cat("------------ Average Test Error -------------- \n")
+	for(j in 1:K) {
+		cat("Poly =", j , " Test Error = ", mean(test_error_matrix[,j]), "\n")
+	}
+
+	best_ME <- 10000
+	best_ME_index <- 0
+	best_MAE <- 10000
+	best_MAE_index <- 0
+	best_SME <- 10000
+	best_SME_index <- 0
+	best_RSME <- 10000
+	best_RSME_index <- 0
+
+	for(j in 1:K) {
+		cat("Poly =", j , " Average ME = ", mean(ME_matrix[,j]), "\n")
+		cat("Poly =", j , " Average MAE = ", mean(MAE_matrix[,j]), "\n")
+		cat("Poly =", j , " Average MSE = ", mean(SME_matrix[,j]), "\n")
+		cat("Poly =", j , " Average RMSE = ", mean(RSME_matrix[,j]), "\n")
+		
+		if ( best_ME > mean(ME_matrix[,j]) ) {
+			best_ME <- mean(ME_matrix[,j])
+			best_ME_index <- j
+		}
+
+		if ( best_MAE > mean(MAE_matrix[,j]) ) {
+			best_MAE <- mean(MAE_matrix[,j])
+			best_MAE_index <- j
+		}
+
+		if ( best_SME > mean(SME_matrix[,j]) ) {
+			best_SME <- mean(SME_matrix[,j])
+			best_SME_index <- j
+		}
+
+		if ( best_RSME > mean(RSME_matrix[,j]) ) {
+			best_RSME <- mean(RSME_matrix[,j])
+			best_RSME_index <- j
+		}
+	}
+	
+	cat("ME: The BEST model complexity is ", best_ME_index, " which is = ", best_ME , "\n")
+	cat("MAE: The BEST model complexity is ", best_MAE_index, " which is = ", best_MAE , "\n")
+	cat("SME: The BEST model complexity is ", best_SME_index, " which is = ", best_SME , "\n")
+	cat("RSME: The BEST model complexity is ", best_RSME_index, " which is = ", best_RSME , "\n")	
+	
+	plot(degrees, colMeans(train_error_matrix[,1:D]), xlab = paste("Fit of Models with Various Complexity for Sample Size =", sample_size), ylab = "Train Error", main = "Train and Test Error per Model Complexity", ylim = c(min(min(colMeans(train_error_matrix[,1:D])), min(colMeans(test_error_matrix[,1:D]))), max(max(colMeans(train_error_matrix[,1:D])), max(colMeans(test_error_matrix[,1:D])))), col = "blue", lwd = 1.5)
+	lines(colMeans(train_error_matrix[,1:D]), col = "blue")
+	points(degrees, colMeans(test_error_matrix[,1:D]), col = "red", lwd = 1.5)
+	lines(colMeans(test_error_matrix[,1:D]), col = "red")
+
+	legend('center', 
+		c("Train Error", "Test Error"), # puts text in the legend
+		pch = c(21,22), #lty=c(1,1), # gives the legend appropriate symbols (lines)
+		pt.bg = c("blue","red"),
+		col=c("blue", "red")) # gives the legend lines the correct color and width
+
+
+##################################################################	
+# Fit a gaussian process
+
+
+#################################	
+#
+# 1st Package: mlegp
+#
+library(mlegp)
+
+train_size = 200
+test_size = 100
+
+# Start measuring building time
+ptm <- proc.time()
+
+# Build the model
+gp_fit = mlegp(data[1:train_size,]$Hops, data[1:train_size,]$Latency2)
+plot(gp_fit)
+dev.copy2eps(file=paste(graphs_path,"/15-GP-mlegp.eps", sep = ""))
+
+# End of measuring building time
+build_time <- proc.time() - ptm
+
+cat("***** GP Results train_size = ", train_size, " and test_size = ", test_size, "\n",
+"***** Time for building the model: ", build_time[3], " seconds \n",
+"***** ", capture.output(gp_fit)[16], "\n",
+"***** Prediction Error = ", sqrt(mean((data[train_size:(train_size + test_size),]$Latency - predict(gp_fit))^2)), "\n", sep = "")
+#################################	
+	
+
+#################################	
+#
+# 2nd Package: GPfit
+#
+library("GPfit")
+
+train_size = 200
+x_rev_scale <- c(min(data[1:train_size,]$Hops), max(data[1:train_size,]$Hops))
+y_rev_scale <- c(min(data[1:train_size,]$Latency2), max(data[1:train_size,]$Latency2))
+
+x = rescale(c(data[1:train_size,]$Hops), c(0,1))
+y = rescale(c(data[1:train_size,]$Latency2), c(0,1))
+
+# Start measuring building time
+ptm <- proc.time()
+
+# Build the model
+GPmodel = GP_fit(x,y)
+plot(GPmodel)
+dev.copy2eps(file=paste(graphs_path,"/15-GP-GPfit.eps", sep = ""))
+
+# End of measuring building time
+build_time <- proc.time() - ptm
+
+test_size = 100
+xnew = range01(data[train_size:(train_size + test_size),]$Hops)
+Model_pred = predict(GPmodel,xnew)
+
+# Reverse the scale of the errors based on the initial ranges of the respone variable Y
+mse_rev_scale <- rescale(Model_pred$MSE, y_rev_scale)
+
+cat("***** GP Results train_size = ", train_size, " and test_size = ", test_size, "\n",
+"***** Time for building the model: ", build_time[3], " seconds \n",
+"***** RMSE Prediction Error = ", sqrt(mean(mse_rev_scale)), "\n", sep = "")
+
+
+#
+# For 2 dimensions
+#
+train_size = 90
+x_rev_scale <- c(min(data[1:train_size,]$Hops), max(data[1:train_size,]$Hops))
+y_rev_scale <- c(min(data[1:train_size,]$Latency2), max(data[1:train_size,]$Latency2))
+
+x1 = rescale(c(data[1:train_size,]$Hops), c(0,1))
+x2 = rescale(c(data[1:train_size,]$Distance), c(0,1))
+y = as.matrix(rescale(c(data[1:train_size,]$Latency2), c(0,1)))
+x <- cbind(x1, x2)
+
+# Start measuring building time
+ptm <- proc.time()
+
+# Build the model
+GPmodel = GP_fit(x,y)
+plot(GPmodel)
+plot(GPmodel, surf_check=TRUE)
+plot(GPmodel, response=FALSE, surf_check=TRUE)
+
+dev.copy2eps(file=paste(graphs_path,"/15-GP-GPfit.eps", sep = ""))
+
+# End of measuring building time
+build_time <- proc.time() - ptm
+
+test_size = 20
+xnew = range01(data[train_size:(train_size + test_size),]$Hops)
+Model_pred = predict(GPmodel,xnew)
+
+# Reverse the scale of the errors based on the initial ranges of the respone variable Y
+mse_rev_scale <- rescale(Model_pred$MSE, y_rev_scale)
+
+cat("***** GP Results train_size = ", train_size, " and test_size = ", test_size, "\n",
+"***** Time for building the model: ", build_time[3], " seconds \n",
+"***** RMSE Prediction Error = ", sqrt(mean(mse_rev_scale)), "\n", sep = "")
+#################################	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+###############
+#
+# d = 3
+
+
+###############
+##
+## Plot Response Surface in 3D
+##
+
+#
+# 1st way
+#
+
+	require(rms)  
+	require(lattice)
+	ddI <- datadist(newData)
+	options(datadist="ddI")
+	lininterp <- ols(Latency2 ~ Hops + LongestPath, data=data)
+	bplot(Predict(lininterp, Hops=seq(min(data$Hops),max(data$Hops),5), LongestPath=seq(min(data$LongestPath),max(data$LongestPath),5)), lfun=wireframe, screen = list(z = -10, x = -50), drape=TRUE)
+
+#
+# 2nd way
+#
+
+	library(scatterplot3d)
+	s3d <- scatterplot3d(cbind(data$Hops, data$LongestPath, data$Latency2), type="h", highlight.3d=TRUE, scale.y=0.7, angle=55, pch=16, xlab="# of Hops", ylab="Size of Longest Path", zlab="Network Latency")
+	## Add the Regression Plane
+	reg11 = lm(Latency2 ~ Hops + LongestPath, data = data)
+	s3d$plane3d(reg11)
+
+#
+# 3rd way
+#
+	library(car)
+	scatter3d(Latency2 ~ Hops + LongestPath, data=data, parallel=FALSE)
+
+###############
+
+###############
+#
+# Boxplots: Reponse vs. Predictor Variable
+# Diagnostic for relationship
+
+	# Response Variables: Delay	Delay2	Latency	Latency2	Success_Ratio	Energy
+	responses <- c(2, 3, 4, 5, 6, 7)
+	responses_names <- c("Delay", "Delay2", "Latency",  "Latency2", "Success_Ratio", "Energy")
+	# Explanatory Variables: Hops	txPackets	ShortestPath	LongestPath	Orchestrators	Neighbors	Distance
+	predictors <- c(8, 9, 10, 11, 12, 13, 14, 15)
+	predictors_names <- c("Hops", "txPackets", "ShortestPath", "LongestPath", "Orchestrators", "Neighbors", "Paths", "Distance")
+
+	for(i in 1:length(responses)){
+		for(j in 1:length(predictors)){
+			cat("i = ", i, "\n")
+			cat("j = ", j, "\n")
+			boxplot(split(data[,responses[j]],data[,predictors[j]]), main=paste(responses_names[i], " vs. ", predictors_names[j]), xlab=predictors_names[j], ylab=responses_names[i])
+			Sys.sleep(5)
+		}
+	}
+
+
+#
+# Histograms per predictor variable
+# Diagnostic for distribution of predictor variable
+predictor = log(Hops)
+h <- hist(predictor, plot = F)
+plot(h, col = heat.colors(length(h$mids))[length(h$counts) - rank(h$counts) +1], ylim = c(0, max(h$counts) + 5), main ="test", sub ="test2")
+rug(predictor)
+text(h$mids, h$counts, h$counts, pos = 3)
+
+##################################################################################################################################################################################################################
+
+#########################################################################################################
+# Necessary functions to be included
+###################################
+
+############
+# Multivariate trimming
+
+library("robustbase", lib.loc="~/R/robustbase")
+library("tensorA", lib.loc="~/R/tensorA")
+library("energy", lib.loc="~/R/energy")
+library("pcaPP", lib.loc="~/R/pcaPP")
+library("rrcov", lib.loc="~/R/rrcov")
+library("car", lib.loc="~/R/car")
+library("robCompositions", lib.loc="~/R/robCompositions")
+library("compositions", lib.loc="~/R/compositions")
+library("sgeostat", lib.loc="~/R/sgeostat")
+library("mvoutlier", lib.loc="~/R/mvoutlier")
+
+remove_outliers <- function(x, q) {
+
+	res <- (mvoutlier.CoDa(x[min(predictors):max(predictors)], quan = q))$outliers
+
+	index <- 0
+
+	for (i in res) {
+		if ( i == FALSE)
+			index <- index + 1
+		# print(i)
+	}
+
+	# cat("Total rows = ", index, "\n")
+	# The new trimmed dataset
+	newX <- matrix(0, ncol=ncol(x), nrow=index)
+	
+	index <- 0
+	totalIndex <- 0
+	for (i in res) {
+		totalIndex <- totalIndex + 1
+
+		# If it is not an outlier, keep the line
+		if ( i == FALSE) {
+			index <- index + 1
+			row <- as.vector(data.frame(x[totalIndex,]), mode = "numeric")
+			newX[index,] = row
+		}
+	}
+
+	newDataFrame = as.data.frame(newX)
+	colnames(newDataFrame) <- colnames(x)
+
+	return(newDataFrame)
+}
+
+# End of Multivariate Trimming
+############
+#########################################################################################################
+
+##########################
+#
+# Bash commands
+#
+
+## Convert all generated .eps files to pdf
+ls *.eps | xargs -n1 epstopdf
+
+## Delete the generated .eps files
+ls *.eps | xargs -n1 rm
+##########################
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+##########################
+# Variable Selection: Finding which variables to indluce in the model 
+##########################
+# Select all the variables
+myvars <- c("Hops", "txPackets", "ShortestPath", "LongestPath", "Orchestrators", "Neighbors", "Paths", "Distance")
+newdata <- mydata[myvars]
+
+# Automated selection of variables
+library(leaps)
+#response = Latency
+#response = Latency2
+#response = Delay
+#response = Delay2
+#response = Energy
+response = Success_Ratio
+
+leaps<-regsubsets(response ~ Hops + txPackets + ShortestPath + LongestPath + Orchestrators + Neighbors + Distance,data=data,nbest=10)
+
+summary(leaps)
+dev.new()
+plot(leaps, scale="adjr2")
+dev.new()
+plot(leaps, scale="bic")
+
+##
+# Automatic methods
+#response = Latency
+response = Latency2
+#response = Delay
+#response = Delay2
+#response = Energy
+#response = Success_Ratio
+
+null=lm(response ~ 1, data=data)
+null
+
+full=lm(response ~ Hops + txPackets + ShortestPath + LongestPath + Orchestrators + Neighbors + Distance, data=data)
+full
+
+# Forward Selection
+step(null, scope=list(lower=null, upper=full), direction="forward")
+
+# Backward Elimination
+step(full, data=data, direction="backward")
+
+# Stepwise Regression
+step(null, scope = list(upper=full), data=data, direction="both")
+##
+
+####################################################################################################################################
+# Multivariate trimming
+y <- read.csv("results/scenario3/random/allConfigurations.csv", sep="\t", header=T, nrow=100)
+attach(y)
+
+# dimensions: is the number of dimensions for which you can tolerate to have extreme values
+# offset: is the column number offset
+# Returns (a, b) where
+# 			a: is the data trimmed independently from the dimensions
+# 			b: dataset is trimmed by considered the various dimensions in an dependent way
+trim_multivariate <- function(x, dimensions, offset = 1, prop=.10) {
+
+	cat("Old Columns = ", ncol(x) ," Old Rows = ", nrow(x), "\n")
+
+	boundsPerDimension <- matrix(0,nrow=ncol(x), ncol=2)
+
+	lowerBound <- prop * nrow(x)
+	upperBound <- nrow(x) - prop * nrow(x)
+	cat("(lowerBound, upperBound) = ", lowerBound, upperBound, "\n")
+
+	newNumRows <- nrow(x) - 2 * prop * nrow(x)
+	cat("newNumColumns = ", ncol(x) ," newNumRows = ", newNumRows, "\n")
+
+	# The temp trimmed dataset
+	tempX <- matrix(0, ncol=ncol(x), nrow=newNumRows)
+	index <- 1 # indicating the current row of the new data matrix
+
+	for (i in 1:ncol(x)) {
+		vec <- numeric(0)
+		for (j in offset:nrow(x)) {
+			# cat("(x, y) = ", i, j, x[j,i], "\n")
+			vec <- c(vec, x[j,i])
+		}
+
+		vec <- sort(vec)
+	 	# cat("Vector = ", length(vec), "\n")
+			
+		#print(sort(vec))
+
+		newVec <- numeric(0) # Vector for keeping the upper and lower bounds
+
+		# Keep only the values between the lower and upper bound
+		for (j in offset:length(vec)) {
+			if( j > lowerBound && j <= upperBound ) {
+				newVec <- c(newVec, vec[j])
+				# cat("(j > lowerBound j < upperBound) = ", j, lowerBound, upperBound, "\n")
+			}
+		}
+
+		# cat("New Vector = ", newVec, "\n")
+		
+		# cat("[min(newVec), max(newVec)] = ", min(newVec), max(newVec), "\n")
+		
+		bounds <- cbind(min(newVec), max(newVec))
+		boundsPerDimension[i,] <- bounds
+		
+		# cat("newVec " = newVec, "\n")
+		#rbind(tempX, newVec)
+		
+		tempX <- rbind(tempX[1:index, ], newVec)
+		index <- index + 1
+	}
+	
+	tempX = tempX[-1,] # Remove first row // bug
+	# cat("testtttttttttt ", "\n")
+	print(boundsPerDimension)
+	
+	index <- 1 # indicating the current row of the new data matrix
+	
+	# Iterate each row of the inital dataset to find the total number of rows of the new data set
+	for (i in 1:nrow(x)) {
+		
+		row <- as.vector(data.frame(x[i,]), mode = "numeric")
+
+		flag <- 0 
+
+		# cat (" length(row) = ", length(row), "\n")
+		# For each value of the row
+		for (j in offset:length(row)) {
+
+			# cat("(j = ", j, " row[j] > lowerBound row[j] < upperBound) = ",write.table(row[j]), boundsPerDimension[j,1], boundsPerDimension[j,2], "\n")
+			# Check if the value is within the bounds
+			if ( row[j] > boundsPerDimension[j,1] && row[j] < boundsPerDimension[j,2] ) {
+				flag <- flag + 1
+				# cat("increasing flag = ", flag, "\n")
+			}
+			else {
+				flag <- flag - 1
+				# cat("increasing flag = ", flag, "\n")
+			}
+		}
+
+		# cat ("for i = ", i, " flag = ", flag, " and ncol(x) = ", ncol(x), "\n")
+
+		# There is no extreme value in all the dimensions
+		if ( flag > ncol(x) - dimensions - offset ) {
+			# cat("index = ", index, "\n")	
+			index <- index + 1	
+		}
+	}
+
+	totalRows <- index - 1
+	# The new trimmed dataset
+	newX <- matrix(0, ncol=ncol(x), nrow=totalRows)
+
+	index <- 1 # indicating the current row of the new data matrix
+	
+	# Iterate each row of the inital dataset to store the rows in the new data set
+	for (i in 1:nrow(x)) {
+		
+		row <- as.vector(data.frame(x[i,]), mode = "numeric")
+
+		flag <- 0 
+
+		# For each value of the row
+		for (j in offset:length(row)) {
+			# Check if the value is within the bounds
+			if ( row[j] > boundsPerDimension[j,1] && row[j] < boundsPerDimension[j,2] ) {
+				flag <- flag + 1
+				# cat("increasing flag = ", flag, "\n")
+			}
+			else {
+				flag <- flag - 1
+				# cat("decreasing flag = ", flag, "\n")
+			}
+		}
+
+		# cat ("for i = ", i, " flag = ", flag, " length(row) = ", length(row), " and ncol(x) = ", ncol(x), "\n")
+
+		# There is no extreme value in all the dimensions
+		if ( flag > ncol(x) - dimensions - offset) {
+			newX[index,] = row
+			index <- index + 1	
+		}
+	}
+
+	# Trimmed data independently from the dimensions
+	tempDataFrame = as.data.frame(t(tempX))
+	colnames(tempDataFrame) <- colnames(x)
+
+	# Trimmed data by considering dimension depedence
+	newDataFrame = as.data.frame(newX)
+	colnames(newDataFrame) <- colnames(x)
+
+	cat("Old dataset size = ", ncol(x), nrow(x), "\n")			      	
+	cat("Temp dataset size = ", ncol(tempDataFrame), nrow(tempDataFrame), "\n") 
+	cat("New dataset size = ", ncol(newDataFrame), nrow(newDataFrame), "\n")  
+	# print(newDataFrame)
+
+   	a <- tempDataFrame
+   	b <- newDataFrame
+   	output<-list(a,b)
+
+	return(output)
+}
+
+cor(trim_multivariate(y, 1, 8, 0.05))
+cor(trim_multivariate(y, 1, 8, 0.10))
+cor(trim_multivariate(y, 1, 8, 0.15))
+cor(trim_multivariate(y, 1, 8, 0.20))
+cor(trim_multivariate(y, 1, 8, 0.25))
+cor(trim_multivariate(y, 1, 8, 0.30))
+
+yy1 = trim_multivariate(y, 1, 8, 0.01)
+
+####################################################################################################################################
+
+
+####################################################################################################
+# Variable Selection: Finding which variables to indluce in the model 
+#####################
+library(leaps)
+
+data <- read.csv("results/scenario3/random/allConfigurations.csv", sep="\t", header=T)
+attach(data)
+
+# Take into account all the variables
+leaps<-regsubsets(Latency~Hops+txPackets+ShortestPath+LongestPath+Orchestrators+Neighbors+Distance,data=data,nbest=10)
+# View results
+summary(leaps)
+# Plot a table of models showing variables in each model.
+# Models are ordered by the selection statistic
+# Use R square
+plot(leaps,scale="r2")
+# Use Mallows' Cp
+plot(leaps,scale="Cp")
+# Use the Bayesian information criterion (BIC)
+plot(leaps,scale="bic")
+# plot statistic by subset size
+library(car)
+plot(leaps, statistic="rsq") 
+
+# The sequence of variable removal is the same as with backward elimination. The only difference is the the Population variable is retained.
+g <- lm(data$Latency2 ~ Hops+txPackets+ShortestPath+LongestPath+Orchestrators+Neighbors+Distance , data=data)
+summary(step(g))
+
+library(leaps)
+x <- model.matrix(g)[,-1]
+y <- Latency2
+g <- leaps(x,y)
+summary(g)
+
+# Variable transformation
+summary(lm(formula = data$Latency2 ~ data$Hops + data$txPackets + data$ShortestPath + data$LongestPath + data$Distance, data = data))
+summary(lm(formula = data$Latency2 ~ sqrt(data$Hops) + data$txPackets + data$ShortestPath + data$LongestPath + data$Distance, data = data))
+
+# Side to side histograms of predictors
+par(mfrow=c(2,5))
+for(i in 8:16) hist(yData[,i],main=names(yData)[i])
+dev.new()
+# Side to side boxplots of predictors
+par(mfrow=c(2,5))
+for(i in 8:16) boxplot(yData[,i],main=names(yData)[i])
+
+# Trimmed model: Comparison
+data2 = remove_outliers(data, 0.75)
+attach(data2)
+summary(lm(formula = data2$Latency2 ~ data2$Hops + data2$txPackets + data2$ShortestPath + data2$LongestPath + data2$Distance, data = data2))
+summary(lm(formula = data2$Latency2 ~ sqrt(data2$Hops) + data2$txPackets + data2$ShortestPath + data2$LongestPath + data2$Distance, data = data2))
+
+
+# For each response variable
+lm.sr <- lm(data$Success_Ratio ~ Hops+txPackets+ShortestPath+LongestPath+Orchestrators+Neighbors+Distance, data=data)
+lm.srNew <- step(lm.sr)
+
+lm.del <- lm(data$Delay ~ Hops+txPackets+ShortestPath+LongestPath+Orchestrators+Neighbors+Distance, data=data)
+lm.delNew <- step(lm.del)
+
+lm.del2 <- lm(data$Delay2 ~ Hops+txPackets+ShortestPath+LongestPath+Orchestrators+Neighbors+Distance, data=data)
+lm.del2New <- step(lm.del2)
+lm.lat <- lm(data$Latency ~ Hops+txPackets+ShortestPath+LongestPath+Orchestrators+Neighbors+Distance, data=data)
+lm.latNew <- step(lm.lat)
+
+lm.lat2 <- lm(data$Latency2 ~ Hops+txPackets+ShortestPath+LongestPath+Orchestrators+Neighbors+Distance, data=data)
+lm.lat2New <- step(lm.lat2)
+
+summary(lm.srNew)
+summary(lm.delNew)
+summary(lm.del2New)
+summary(lm.latNew)
+summary(lm.lat2New)
+
+####################################################################################################
+
+
+
+
+#######################################################################################
+##
+## Cross Validation
+##
+##########
+library(DAAG)
+
+data <- read.csv("results/scenario3/random/allConfigurations.csv", sep="\t", header=T,nrow=1000)
+attach(data)
+
+cv = CVlm(df=data, form.lm=formula(Latency2~Hops+LongestPath),plotit="Residual", m=10)
+dev.new()
+attr(cv, "ms")
+
+
+cv = CVlm(df=data, form.lm=formula(Latency2~Hops+LongestPath),plotit="Observed",m=10)
+dev.new()
+attr(cv, "ms")
+
+lm <- lm(formula(Latency2~Hops+LongestPath),data=data)
+hat <- predict(lm, interval="confidence", level=0.95)
+plot(hat[,1], col = "blue")
+points(Latency2, col = "red")
+par(new=T)
+library(gplots)
+plotCI(1:nrow(hat),hat[,1],ui=hat[,3],li=hat[,2])
+#######################################################################################
+
+
+
+
+
+#####################################################################################################################################
+##
+## Compare Statistics
+##
+#########
+
+x <- read.csv("results/scenario1/central/allConfigurations.csv", sep="\t", header=T)
+summary(x)
+
+y <- read.csv("results/scenario1/random/allConfigurations.csv", sep="\t", header=T)
+summary(y)
+
+x <- read.csv("results/scenario2/central/allConfigurations.csv", sep="\t", header=T)
+summary(x)
+
+y <- read.csv("results/scenario2/random/allConfigurations.csv", sep="\t", header=T)
+summary(y)
+
+
+x <- read.csv("results/scenario3/central/allConfigurations.csv", sep="\t", header=T)
+summary(x)
+
+y <- read.csv("results/scenario3/random/allConfigurations.csv", sep="\t", header=T)
+summary(y)
+
+
+dataC = read.csv("results/scenario2/random/allConfigurations.csv", sep="\t", header=T, colClasses=c('NULL',NA,'NULL','NULL',NA,NA,NA,NA,NA,NA,NA))
+plot ( dataC)
+
+#####################################################################################################################################
+##
+## Linear Regression
+##
+#########
+
+#1	2	3		4	5	6		7		8		9		10
+#Delay	Latency	Success_Ratio	Energy	Hops	txPackets	rxPackets	ShortestPath	LongestPath	Orchestrators
+
+dataC = read.csv("allConfigurations.csv", sep="\t", header=T)
+head(dataC)
+summary(dataC)
+
+# Hops vs. Network Latency
+# Predictor: Hops
+# Response: Network Latency
+reg1 <- lm(dataC[,2]~dataC[,5])
+par(cex=.8)
+plot(dataC[,5], dataC[,2], xlab="# of Hops", ylab="Network Latency (Seconds)")
+abline(reg1)
+
+# Hops vs. Success Rate
+# Predictor: Hops
+# Response: Success Rate
+reg1 <- lm(dataC[,3]~dataC[,5])
+par(cex=.8)
+plot(dataC[,5], dataC[,3], xlab="# of Hops", ylab="Success Ratio")
+abline(reg1)
+
+# Orchestrators vs. Total Delay
+# Predictor: Orchestrators
+# Response: Total Delay
+reg1 <- lm(dataC[,1]~dataC[,10])
+par(cex=.8)
+plot(dataC[,10], dataC[,1], xlab="# of Orchestrators", ylab="Network Latency (Seconds)")
+abline(reg1)
+
+# Orchestrators vs. Network Latency
+# Predictor: Orchestrators
+# Response: Total Delay
+reg1 <- lm(dataC[,2]~dataC[,10])
+par(cex=.8)
+plot(dataC[,10], dataC[,2], xlab="# of Orchestrators", ylab="Network Latency (Seconds)")
+abline(reg1)
+
+# Longest Path (Hops) vs. Network Latency
+# Predictor: Orchestrators
+# Response: Total Delay
+reg1 <- lm(dataC[,2]~dataC[,9])
+par(cex=.8)
+plot(dataC[,9], dataC[,2], xlab="Longest Path (Hops)", ylab="Network Latency (Seconds)")
+abline(reg1)
+
+# Transmitted Packets vs. Network Latency
+# Predictor: Orchestrators
+# Response: Total Delay
+reg1 <- lm(dataC[,2]~dataC[,6])
+par(cex=.8)
+plot(dataC[,6], dataC[,2], xlab="Longest Path (Hops)", ylab="Network Latency (Seconds)")
+abline(reg1)
+
+#####################################################################################################################################
+##
+## Multivariate Linear Regression
+##
+#########
+
+#1	2	3		4	5	6		7		8		9		10
+#Delay	Latency	Success_Ratio	Energy	Hops	txPackets	rxPackets	ShortestPath	LongestPath	Orchestrators
+
+dataC = read.csv("allConfigurations.csv", sep="\t", header=T)
+head(dataC)
+summary(dataC)
+
+# Only Delay as response variable
+dataC = read.csv("allConfigurations.csv", sep="\t", header=T, colClasses=c(NA,'NULL','NULL','NULL',NA,NA,NA,NA,NA,NA), nrows=500)
+plot ( dataC)
+dev.copy2eps(file="Delay-vs.-predictors.eps")
+# Correlation matrix
+cor(dataC)
+
+# Only Latency as response variable
+dataC = read.csv("allConfigurations.csv", sep="\t", header=T, colClasses=c('NULL',NA,'NULL','NULL',NA,NA,NA,NA,NA,NA), nrows=500)
+plot ( dataC)
+dev.copy2eps(file="Latency-vs.-predictors.eps")
+# Correlation matrix
+cor(dataC)
+
+# Only Success Rate as response variable
+dataC = read.csv("allConfigurations.csv", sep="\t", header=T, colClasses=c('NULL','NULL',NA,'NULL',NA,NA,NA,NA,NA,NA))
+plot ( dataC)
+dev.copy2eps(file="SR-vs.-predictors.eps")
+# Correlation matrix
+cor(dataC)
+
+# Only Energy as response variable
+dataC = read.csv("allConfigurations.csv", sep="\t", header=T, colClasses=c('NULL','NULL','NULL',NA,NA,NA,NA,NA,NA,NA))
+plot ( dataC)
+dev.copy2eps(file="Energy-vs.-predictors.eps")
+# Correlation matrix
+cor(dataC)
+
+# Residual Plot
+reg1 <- lm(log(dataC[,2])~dataC[,5]+dataC[,11])
+summary(reg1)
+layout(matrix(1:4,2,2))
+plot(reg1)
+dev.copy2eps(file="reg1.eps")
+
+reg2 <- lm(dataC[,1]~dataC[,6])
+summary(reg2)
+layout(matrix(1:4,2,2))
+plot(reg2)
+dev.copy2eps(file="reg2.eps")
+#####################################################################################################################################
+
+
+
+############################################
+# 2nd order Taylor series approximation
+
+#1	2	3		4	5	6		7		8		9		10
+#Delay	Latency	Success_Ratio	Energy	Hops	txPackets	rxPackets	ShortestPath	LongestPath	Orchestrators
+
+dataC = read.csv("allConfigurations.csv", sep="\t", header=T)
+attach(dataC)
+reg1 <- lm(dataC[,2]~dataC[,5]+ dataC[,9] + dataC[,5]*dataC[,5] + dataC[,9]*dataC[,9] + dataC[,5]*dataC[,9])
+summary(reg1)
+
+# For Latency (dataC[,2])
+null=lm(dataC[,2]~1, data=dataC)
+full=lm(dataC[,2]~dataC[,5]+ dataC[,9] + dataC[,5]*dataC[,5] + dataC[,9]*dataC[,9] + dataC[,5]*dataC[,9], data=dataC)
+
+# Backward
+full.step.both <- step(full, direction='both')
+print(summary(full.step.both))
+
+# Forward: Need an "upper" model
+lowest.step.forward <- step(lm(dataC[,2] ~ 1, data=dataC), list(upper=full), direction='forward')
+print(summary(lowest.step.forward))
+
+############################################
+
+####################################
+# Comparing two models with ANOVA
+
+#1	2	3		4	5	6		7		8		9		10
+#Delay	Latency	Success_Ratio	Energy	Hops	txPackets	rxPackets	ShortestPath	LongestPath	Orchestrators
+dataC = read.csv("allConfigurations.csv", sep="\t", header=T)
+head(dataC)
+summary(dataC)
+
+lmFit1 <- lm(Latency ~ Hops+txPackets+rxPackets+ShortestPath+LongestPath+Orchestrators)
+summary(lmFit1)
+layout(matrix(1:4,2,2))
+plot(lmFit1)
+# To extract individual components
+names(lmFit1)
+
+
+lmFit2 <- lm(Latency ~ Hops+Orchestrators)
+
+compMod <- anova(lmFit1, lmFit2)
+
+# Fit the regression model using the function lm ():
+# Calculate dataC[,2] based on dataC[,5] and dataC[,8]
+dataC.lm <- lm( dataC[,2] ~ dataC[,5] + dataC[,6] + dataC[,8], data = dataC )
+lm( dataC[,2] ~ dataC[,5] + dataC[,6] + dataC[,8], data = dataC )
+# Use the function summary () to get some results :
+summary ( dataC.lm , corr = TRUE )
+
+# Create a table with fitted values and residuals
+data.frame ( dataC, fitted.value = fitted (dataC.lm), residual = resid(dataC.lm))
+
+# The ANOVA breaks the total variability observed in the sample into two parts:
+# Total Sample Variability (TSS) =  Variability explained by the model variability (SSreg) + Unexplained (RSS)
+anova(dataC.lm)
+
+# Leave the intercept out
+dataC.lm0 <- lm( dataC[,2] ~ -1 + dataC[,5] + dataC[,8], data = dataC )
+summary ( dataC.lm0)
+
+dataC.lm1 <- lm(formula = dataC[,2] ~ -1 + dataC[,5], data = dataC )
+summary ( dataC.lm1)
+
+dataC.lm2 <-lm(formula = dataC[,2] ~ -1 + dataC[,8], data = dataC )
+summary ( dataC.lm2 )
+
+anova ( dataC.lm1, dataC.lm2 )
+
+lm(formula = dataC[,2] ~ -1 + dataC[,5] + dataC[,8], data = dataC )
+
+
+firstReg <- lm(Latency~txPackets+Hops+Orchestrators,dataC)
+summary(firstReg)
+fitted.values(firstReg)
+residuals(firstReg)
+
+firstReg2 <- lm(Latency~Hops+Orchestrators+I(Hops*Orchestrators),dataC)
+
+
+dataC = read.csv("allConfigurations.csv", sep="\t", header=T)
+
+# Variable selection
+library(MASS)
+step <- stepAIC(firstReg, direction="both")
+step$anova
+
+
+
+#############################################################
+# Use stepwise search, both direction, starting at full model
+
+dataC = read.csv("results/scenario3/random/allConfigurations.csv", sep="\t", header=T)
+attach(dataC)
+
+# For Latency
+null=lm(Latency2~1, data=dataC)
+full=lm(Latency2~Hops+txPackets+ShortestPath+LongestPath+Orchestrators+Neighbors+Distance, data=dataC)
+
+# Backward
+full.step.both <- step(full, direction='both')
+print(summary(full.step.both))
+
+# Forward: Need an "upper" model
+lowest.step.forward <- step(lm(Latency2 ~ 1, data=dataC), list(upper=full), direction='forward')
+print(summary(lowest.step.forward))
+#############################################################
+
+
+
+
+step(null, scope=list(lower=null, upper=full), direction="forward")
+
+step(full, data=dataC, direction="backward")
+step(null, scope = list(upper=full), data=dataC, direction="both")
+
+glm(formula = Latency ~ Hops+txPackets+rxPackets+ShortestPath+LongestPath+Orchestrators, family = binomial, data = dataC)
+
+##################################################
+# 3D
+library(scatterplot3d)
+dataC = read.csv("allConfigurations.csv", sep="\t", header=T)
+scatterplot3d(dataC[,2:4],xlab="Response Time (Seconds)", zlab="Energy Consumption (Joules)", ylab="Success Rate (%)")
+dev.copy2eps(file="SearchSpace3d.eps")
+
+# 3D rotated
+library(rgl)
+dataC = read.csv("allConfigurations.csv", sep="\t", header=T)
+plot3d(dataC[,2:4],xlab="Response Time (Seconds)", zlab="Energy Consumption (Joules)", ylab="Success Rate (%)")
+
+# 2D Latency vs. Energy
+x <- read.csv("allConfigurations.csv", sep="\t", header=T,nrows=50)
+x <- t(x)
+xR <- as.numeric(x[2,1:ncol(x)])
+yL <- as.numeric(x[4,1:ncol(x)])
+plot(xR, yL, xlab="Response Time (Seconds)", ylab="Energy Consumption (Joules)")
+dev.copy2eps(file="SearchSpace2dLTvsNRG-central.eps")
+
+x <- read.csv("allConfigurations.csv", sep="\t", header=T)
+xR <- as.numeric(x[,2])
+yL <- as.numeric(x[,4])
+d <- data.frame(xR, yL)
+plot(d, xlab="Response Time (Seconds)", ylab="Energy Consumption (Joules)")
+
+d <- d[ order(d$x, decreasing=FALSE), ]
+result <- d[1,]
+for(i in seq_len(nrow(d))[-1] ) {
+  if( d$y[i] < result$y[nrow(result)] ) {
+    result <- rbind(result, d[i,])  # inefficient
+  } 
+}
+points(result, cex=2, pch=15)
+
+
+#Latency vs. Success_Ratio
+x <- read.csv("allConfigurations.csv", sep="\t", header=T)
+x <- t(x)
+xR <- as.numeric(x[2,1:ncol(x)])
+yL <- as.numeric(x[3,1:ncol(x)])
+plot(xR, yL, xlab="Response Time (Seconds)", ylab="Success Rate (%)")
+dev.copy2eps(file="SearchSpace2dLTvsNRG-central.eps")
+
+x <- read.csv("allConfigurations.csv", sep="\t", header=T)
+xR <- as.numeric(x[,2])
+yL <- as.numeric(x[,3])
+d <- data.frame(xR, yL)
+plot(d, xlab="Response Time (Seconds)", ylab="Success Rate (%)")
+
+d <- d[ order(d$x, decreasing=FALSE), ]
+result <- d[1,]
+for(i in seq_len(nrow(d))[-1] ) {
+  if( d$y[i] > result$y[nrow(result)] ) {
+    result <- rbind(result, d[i,])  # inefficient
+  } 
+}
+points(result, cex=2, pch=15)
+
+
+#Success_Ratio vs. Energy
+x <- read.csv("allConfigurations.csv", sep="\t", header=T)
+x <- t(x)
+xR <- as.numeric(x[3,1:ncol(x)])
+yL <- as.numeric(x[4,1:ncol(x)])
+plot(xR, yL, xlab="Success Rate (%)", ylab="Energy Consumption (Joules)")
+dev.copy2eps(file="SearchSpace2dSRvsNRG-central.eps")
+
+x <- read.csv("allConfigurations.csv", sep="\t", header=T)
+xR <- as.numeric(x[,3])
+yL <- as.numeric(x[,4])
+d <- data.frame(xR, yL)
+plot(d, xlab="Success Rate (%)", ylab="Energy Consumption (Joules)")
+
+d <- d[ order(d$x, decreasing=TRUE), ]
+result <- d[1,]
+for(i in seq_len(nrow(d))[-1] ) {
+  if( d$y[i] < result$y[nrow(result)] ) {
+    result <- rbind(result, d[i,])  # inefficient
+  } 
+}
+points(result, cex=2, pch=15)
+
+#########################
+##
+## Gaussian Process Regression
+##
+#########
+
+library(mlegp)
+x = -5:5
+z1 = 10 - 5 * x + rnorm(length(x))
+z2 = 7 * sin(x) + rnorm(length(x))
+fitMulti = mlegp(x, cbind(z1, z2))
+plot(fitMulti)
+
+
+
+dataC = read.csv("allConfigurations.csv", sep="\t", header=T,nrows=500)
+head(dataC)
+summary(dataC)
+
+# Orchestrators vs. Network Latency
+# Predictor: Orchestrators
+# Response: Network Latency
+reg1 <- lm(dataC[,2]~dataC[,8])
+par(cex=.8)
+plot(dataC[,8], dataC[,2], xlab="# of Orchestrators", ylab="Network Latency (Seconds)")
+abline(reg1)
+
+
+
+
+
+
+
+########################
+# Adjusted R^2
+g <-leaps(dataC[,-10],V9,nbest=1,names=c("V1","V2","V3","V4","V5","V6","V7","V8","V10","V11"),method="adjr2")
+
+#########################
+##
+## Gaussian Process Regression
+##
+#########
+
+require(MASS)
+require(reshape2)
+require(ggplot2)
+
+set.seed(12345)
+
+x_predict <- seq(-5,5,len=50)
+l <- 1
+SE <- function(Xi,Xj, l) exp(-0.5 * (Xi - Xj) ^ 2 / l ^ 2)
+cov <- function(X, Y) outer(X, Y, SE, l)
+COV <- cov(x_predict, x_predict)
+
+values <- mvrnorm(3, rep(0, length=length(x_predict)), COV)
+
+
+dat <- data.frame(x=x_predict, t(values))
+dat <- melt(dat, id="x")
+head(dat)
+
+fig2a <- ggplot(dat,aes(x=x,y=value)) +
+  geom_rect(xmin=-Inf, xmax=Inf, ymin=-2, ymax=2, fill="grey80") +
+  geom_line(aes(group=variable)) +   theme_bw() +
+  scale_y_continuous(lim=c(-3,3), name="output, f(x)") +
+  xlab("input, x")
+fig2a
+
+
+obs <- data.frame(x = c(-4, -3, -1,  0,  2),
+                  y = c(-2,  0,  1,  2, -1))
+
+cov_xx_inv <- solve(cov(obs$x, obs$x))
+Ef <- cov(x_predict, obs$x) %*% cov_xx_inv %*% obs$y
+Cf <- cov(x_predict, x_predict) - cov(x_predict, obs$x)  %*% cov_xx_inv %*% cov(obs$x, x_predict)
+values <- mvrnorm(3, Ef, Cf)
+
+dat <- data.frame(x=x_predict, t(values))
+dat <- melt(dat, id="x")
+
+fig2b <- ggplot(dat,aes(x=x,y=value)) +
+  geom_ribbon(data=NULL, 
+              aes(x=x_predict, y=Ef, ymin=(Ef-2*sqrt(diag(Cf))), ymax=(Ef+2*sqrt(diag(Cf)))),
+              fill="grey80") +
+  geom_line(aes(color=variable)) + #REPLICATES
+  geom_line(data=NULL,aes(x=x_predict,y=Ef), size=1) + #MEAN
+  geom_point(data=obs,aes(x=x,y=y)) +  #OBSERVED DATA
+  scale_y_continuous(lim=c(-3,3), name="output, f(x)") +
+  xlab("input, x")
+fig2b
+
+
+
+
+
+
+
+
+
+##########################################################
+# Plot Rsquares: Model selection (regressions2.ppt)
+y <- read.csv("results/scenario2/random/allConfigurations.csv", sep="\t", header=T)
+attach(y)
+
+g <-leaps(dataC[,-11],y$V2,nbest=1,names=c("V1","V3","V4","V5","V6","V7","V8","V9","V10","V11"),method="adjr2")
+plot(g$size,g$adjr2)
+
+g <-leaps(dataC[,-11],y$V2,nbest=1,names=c("V1","V3","V4","V5","V6","V7","V8","V9","V10","V11"),method="Cp")
+plot(g$size,g$Cp)
+abline(0,1) 
+g$which
+
+g <-leaps(dataC[,-11],y$V2,nbest=1,names=c("V1","V3","V4","V5","V6","V7","V8","V9","V10","V11"),method="r2")
+k<-g$size-1; r2<-g$r2; n<-length(V9); sst<-(n-1)*var(V9)
+plot(k+1,n*log((1-r2)*sst/n)+2*n*(k+2)/(n-k-3),xlab="k+1",ylab="AICc")
+g$which
+
+#Check for Interaction in Final Model (R)
+g0 <- lm(V2~V5+V11)
+summary(g0)
+
+hist(rstudent(g0), nclass=12)
+qq.plot(g0, simulate=T)
+
+g1 <- lm(V2~V5)
+summary(g1)
+
+hist(rstudent(g1), nclass=12)
+qq.plot(g1, simulate=T)
+
+influence.measures(g0)
+
+##########################################################
+
+##########################################################
+# Plot pairs, regression lines and histograms (VERY NICE!)
+y <- read.csv("results/scenario3/random/allConfigurations.csv", sep="\t", header=T)
+attach(y)
+
+# Correlation Matrix
+cor(y) 
+
+# Delay
+pairs(cbind(Delay, y[,8:15]), 
+panel=function(x,y){
+points(x,y) 
+abline(lm(y~x), lty=2) 
+lines(lowess(x,y))
+}, 
+diag.panel=function(x){ 
+par(new=T) 
+hist(x, main="", axes=F, nclass=12)
+}
+)
+dev.copy2eps(file="Delay-vs.-predictors.eps")
+dev.new()
+
+pairs(cbind(Delay2, y[,8:15]), 
+panel=function(x,y){
+points(x,y) 
+abline(lm(y~x), lty=2) 
+lines(lowess(x,y))
+}, 
+diag.panel=function(x){ 
+par(new=T) 
+hist(x, main="", axes=F, nclass=12)
+}
+)
+dev.copy2eps(file="Delay2-vs.-predictors.eps")
+dev.new()
+
+# Latency
+pairs(cbind(Latency, y[,8:15]), 
+panel=function(x,y){
+points(x,y) 
+abline(lm(y~x), lty=2) 
+lines(lowess(x,y))
+}, 
+diag.panel=function(x){ 
+par(new=T) 
+hist(x, main="", axes=F, nclass=12)
+}
+)
+dev.copy2eps(file="Latency-vs.-predictors.eps")
+dev.new()
+
+pairs(cbind(Latency2, y[,8:15]), 
+panel=function(x,y){
+points(x,y) 
+abline(lm(y~x), lty=2) 
+lines(lowess(x,y))
+}, 
+diag.panel=function(x){ 
+par(new=T) 
+hist(x, main="", axes=F, nclass=12)
+}
+)
+dev.copy2eps(file="Latency2-vs.-predictors.eps")
+dev.new()
+
+# Energy
+pairs(cbind(Energy, y[,8:15]), 
+panel=function(x,y){
+points(x,y) 
+abline(lm(y~x), lty=2) 
+lines(lowess(x,y))
+}, 
+diag.panel=function(x){ 
+par(new=T) 
+hist(x, main="", axes=F, nclass=12)
+}
+)
+dev.copy2eps(file="Energy-vs.-predictors.eps")
+dev.new()
+
+# Success_Ratio
+pairs(cbind(Success_Ratio, y[,8:15]), 
+panel=function(x,y){
+points(x,y) 
+abline(lm(y~x), lty=2) 
+lines(lowess(x,y))
+}, 
+diag.panel=function(x){ 
+par(new=T) 
+hist(x, main="", axes=F, nclass=12)
+}
+)
+dev.copy2eps(file="Success_Ratio-vs.-predictors.eps")
+###############################
+# Density function in Histogram
+hist(Latency, prob=TRUE)
+lines(density(Latency))
+
+# Jittering the data by adding a small random quantity to each coordinate
+plot(Hops,Neighbors)
+plot(jitter(Hops, factor=2), jitter(Neighbors, factor=2))
+# Jittering: Another example
+plot(Hops, Energy)
+plot(jitter(Hops, factor=2), Energy)
+abline(lm(Energy~Hops),lwd=3,lty=2)
+lines(lowess(Hops, Energy, f=.2),lwd=3)
+
+# Find number of unique values
+valid <- !(is.na(Latency) | is.na(Hops))
+sum(valid)
+sort(unique(Hops[valid]))
+length(.Last.value)
+length(unique(Latency[valid]))
+
+##########################################################
+
+y <- read.csv("results/scenario2/random/allConfigurations.csv", sep="\t", header=T)
+attach(y)
+span <- seq(.1,1,len=31)
+fit <- loess(Latency~Hops,data.frame(cbind(Hops,Latency)),span=span[optimal[1]],degree=0)
+plot(fit,type="l",ylim=range(m$spnbmd),xlab="Age",ylab="Relative change in spinal BMD",main="")
+fit <- loess(spnbmd~age,m,span=span[optimal[2]],degree=1)
+lines(fit,col="blue")
+fit <- loess(spnbmd~age,m,span=span[optimal[3]],degree=2)
+lines(fit,col="red")
+points(m$age,m$spnbmd,pch=19,cex=0.7,col="gray")
+abline(h=0,lty=2)
+legend("topright",legend=c("degree=0","degree=1","degree=2"),lty=1,col=c("black","blue","red"))
+
+##########################################################################################
+# Simple.scatterplot which contains of a scatterplot between (x, y) and their histograms
+#
+
+library(MASS)
+# install.packages("UsingR", lib="~/R/UsingR")
+library("UsingR", lib.loc="~/R/UsingR")
+
+y <- read.csv("results/scenario2/random/allConfigurations.csv", sep="\t", header=T)
+attach(y)
+
+# Hops
+simple.scatterplot(Hops, Delay)
+title("# of Hops vs. Total Delay")
+dev.new()
+simple.scatterplot(Hops, Latency)
+title("# of Hops vs. Network Latency")
+dev.new()
+simple.scatterplot(Hops, Energy)
+title("# of Hops vs. Energy Consumption")
+dev.new()
+simple.scatterplot(Hops, Success_Ratio)
+title("# of Orchestrators vs. Success Ratio")
+
+# Neighbors
+simple.scatterplot(Neighbors, Delay)
+title("# of Neighbors vs. Total Delay")
+dev.new()
+simple.scatterplot(Neighbors, Latency)
+title("# of Neighbors vs. Network Latency")
+dev.new()
+simple.scatterplot(Neighbors, Energy)
+title("# of Neighbors vs. Energy Consumption")
+dev.new()
+simple.scatterplot(Neighbors, Success_Ratio)
+title("# of Orchestrators vs. Success Ratio")
+
+# Orchestrators
+simple.scatterplot(Orchestrators, Delay)
+title("# of Orchestrators vs. Total Delay")
+dev.new()
+simple.scatterplot(Orchestrators, Latency)
+title("# of Orchestrators vs. Network Latency")
+dev.new()
+simple.scatterplot(Orchestrators, Energy)
+title("# of Orchestrators vs. Energy Consumption")
+dev.new()
+simple.scatterplot(Orchestrators, Success_Ratio)
+title("# of Orchestrators vs. Success Ratio")
+
+##########################################################################################
+
+y <- read.csv("results/scenario2/random/allConfigurations.csv", sep="\t", header=T)
+attach(y)
+plot(y[2:13])
+
+# Categorical variable
+y$Orchestrators <- factor(y$Orchestrators)
+summary(y)
+
+# Keep all predictor variables in a vector
+x <- cbind(1, y[,-c(1,2,3,4)])
+
+### Regression
+# Check if the categorical variable Orchestrators affects the various responses
+reg1<-lm(Energy ~ Orchestrators)
+summary(reg1)
+reg2<-lm(Energy ~ factor(Orchestrators))
+summary(reg2)
+
+# From Reference: http://www.ats.ucla.edu/stat/r/modules/dummy_vars.htm
+x2a = factor(x2, levels=c("1", "2", "3", "4", "5"))
+Orchestrators.orch <-factor(Orchestrators)
+summary(lm(Energy ~ Orchestrators.orch))
+
+###########################################
+### Gaussian Process
+### 1 variable
+library("lhs", lib.loc="~/R/lhs/")
+library(lattice)
+library("GPfit", lib.loc="~/R/GPfit/")
+
+n = 7
+x = maximinLHS(n,1)
+y = matrix(0,n,1)
+
+computer_simulator <- function(x) {
+  result <- log(x + 0.1) + sin(5 * pi * x); 
+  return(result)
+}
+
+for(i in 1:n){ y[i] = computer_simulator(x[i]) }
+GPmodel = GP_fit(x,y)
+plot(GPmodel)
+
+### Gaussian Process
+### 2 variables
+n = 20
+x = maximinLHS(n,2)
+y = matrix(0,n,1)
+
+computer_simulator <- function(x1, x2) {
+  result <- 1 + ( x1 + x2 + 1)^2; 
+  return(result)
+}
+
+for(i in 1:n){ y[i] = computer_simulator(x[i], x[i]*x[i]) }
+GPmodel = GP_fit(x,y)
+
+xnew = matrix(runif(20),ncol=2)
+Model_pred = predict.GP(GPmodel,xnew)
+plot.GP(GPmodel, range=c(0,1), resolution=50, surf_check=FALSE,response=TRUE)
+plot.GP(GPmodel, range=c(0,1), resolution=50, surf_check=FALSE,response=FALSE, contour=TRUE)
+plot.GP(GPmodel, range=c(0,1), resolution=50, surf_check=TRUE, drape=TRUE)
+plot.GP(GPmodel, range=c(0,1), resolution=50, response=FALSE,surf_check=TRUE,shade=TRUE)
+
+#1	2	3		4	5	6		7		8		9		10		11		12
+#Delay	Latency	Success_Ratio	Energy	Hops	txPackets	rxPackets	ShortestPath	LongestPath	Orchestrators	Neighbors	Paths
+y <- read.csv("results/scenario2/random/allConfigurations.csv", sep="\t", header=T, nrows=50)
+attach(y)
+
+x = cbind(y[,5],y[,6])
+yy = y[,2]
+
+GPmodel = GP_fit(x,yy)
+plot.GP(GPmodel, range=c(0,1), resolution=50, surf_check=TRUE, drape=TRUE)
+
+
+###################
+# Example from blog
+install.packages("reshape2",lib="~/R/reshape2/")
+library("reshape2",lib.loc="~/R/reshape2/")
+install.packages("ggplot2",lib="~/R/ggplot2/")
+library("ggplot2",lib.loc="~/R/ggplot2/")
+
+require(MASS)
+require(reshape2)
+require(ggplot2)
+
+set.seed(12345)
+
+# Define the x values of the prediction points or test points
+x_predict <- seq(0,5,len=50)
+# Scale parameter for the covariance function l =1
+l <- 1
+# We will use the squared exponential as the covariance function
+SE <- function(Xi,Xj, l) exp(0.5 * (Xi - Xj) ^ 2 / l ^ 2)
+cov <- function(X, Y) outer(X, Y, SE, l)
+COV <- cov(x_predict, x_predict)
+
+# Generate a number of functions from the process
+values <- mvrnorm(3, rep(0, length=length(x_predict)), COV)
+
+# Reshape the data into long (tidy) form, listing x value, y value, and sample number
+dat <- data.frame(x=x_predict, t(values))
+dat <- melt(dat, id="x")
+head(dat)
+
+# Plot the result
+fig2a <- ggplot(dat,aes(x=x,y=value)) +
+  geom_rect(xmin=-Inf, xmax=Inf, fill="grey80") +
+  geom_line(aes(group=variable)) +   theme_bw() +
+  name="output, f(x)"), xlab("input, x")
+fig2a
+
+obs <- data.frame(x = c(4, 3, 1,  0,  2),
+                  y = c(2,  0,  1,  2, 1))
+# Additive noise
+sigma.n <- 0.25
+cov_xx_inv <- solve(cov(obs$x, obs$x) + sigma.n^2 * diag(1, length(obs$x)))
+Ef <- cov(x_predict, obs$x) %*% cov_xx_inv %*% obs$y
+Cf <- cov(x_predict, x_predict) - cov(x_predict, obs$x)  %*% cov_xx_inv %*% cov(obs$x, x_predict)
+
+# Take 3 random samples from the posterior distribution
+values <- mvrnorm(3, Ef, Cf)
+
+# Plot
+dat <- data.frame(x=x_predict, t(values))
+dat <- melt(dat, id="x")
+
+fig2c <- ggplot(dat,aes(x=x,y=value)) +
+  geom_ribbon(data=NULL, 
+              aes(x=x_predict, y=Ef, ymin=(Ef-2*sqrt(diag(Cf))), ymax=(Ef+2*sqrt(diag(Cf)))),
+              fill="grey80") + # Var
+  geom_line(aes(color=variable)) + #REPLICATES
+  geom_line(data=NULL,aes(x=x_predict,y=Ef), size=1) + #MEAN
+  geom_point(data=obs,aes(x=x,y=y)) +  #OBSERVED DATA
+  scale_y_continuous(lim=c(-3,3), name="output, f(x)") +
+  xlab("input, x")
+fig2c
+###########################################
+
+
+#####################################################
+# Biviarate density estimation
+sm.density(cbind(Delay,Orchestrators))
+sm.density(cbind(Delay,Hops))
+sm.density(cbind(Delay,Neighbors))
+
+sm.density(cbind(Latency,Orchestrators))
+sm.density(cbind(Latency,Hops))
+sm.density(cbind(Latency,Neighbors))
+
+sm.density(cbind(Energy,Orchestrators))
+sm.density(cbind(Energy,Hops))
+sm.density(cbind(Energy,Neighbors))
+
+sm.density(cbind(Success_Ratio,Orchestrators))
+sm.density(cbind(Success_Ratio,Hops))
+sm.density(cbind(Success_Ratio,Neighbors))
+
+# 2D Binned Kernel Density Estimate
+library(MASS)
+library(KernSmooth)
+x <- cbind(Latency,Orchestrators)
+est <- bkde2D(x, bandwidth=c(0.7, 7))
+contour(est$x1, est$x2, est$fhat)
+persp(est$fhat)
+#####################################################
+
+
+
+######################################################################
+# Book Exercise 
+#################
+
+color <- c("blue", "orange", "indianred", "skyblue4", "lightblue")
+
+cols <-     ifelse(
+                 (Orchestrators ==1) , color[1],
+                     ifelse(
+                         (Orchestrators ==2), color[2],
+                             ifelse(
+                                 (Orchestrators ==3) , color[3],
+                                     ifelse(
+                                         (Orchestrators ==4), color[4],
+                                             ifelse(
+                                                 (Orchestrators ==5) , color[5] , color[5]
+                                                     )
+                                             )
+                                     )
+                             )
+                     )
+plot(Orchestrators, Energy, col=cols)
+
+% Model with one interaction
+energy.lm3 = lm(Energy ~ Hops+ Orchestrators + Orchestrators * Hops, data=y)
+summary(energy.lm3)
+
+plot(Orchestrators, Energy, col=cols)
+% Plot the complete fitted line
+curve(cbind(1,1,x, 1*x) %*% coef(energy.lm3), add=TRUE, col="black")
+% Plot the fitted line without the interaction
+curve(cbind(1,0,x, 0*x) %*% coef(energy.lm3), add=TRUE, col="black")
+
+% Create a new prediction point
+x.new <- data.frame(Orchestrators=4, Hops = 13)
+% Predict the result of the function on a the new data point
+predict(energy.lm2, x.new, interval="prediction", level=0.95)
+
+######################################################################
+
+
+#####################
+# Examining the paths
+
+paths <- read.csv("results/scenario3/random/allPaths.csv", sep="\t", header=T)
+attach(paths)
+
+plot(paths[,2:11])
+dev.new()
+output = trim_multivariate(paths[,2:11], 0, 6, 0.2)
+plot(as.data.frame(output[1]))
+dev.new()
+plot(as.data.frame(output[2]))
+
+# Check the latency per path size in the correctly trimmed dataset
+tester = cbind(paths$Hops,paths$Delay)
+output = trim_multivariate(as.data.frame(tester), 0, 1, 0.005)
+t = as.data.frame(output[2])
+boxplot(t$V2~t$V1,t)
+dev.new()
+ 
+tester = cbind(paths$Hops,paths$Delay2)
+output = trim_multivariate(as.data.frame(tester), 0, 1, 0.005)
+t = as.data.frame(output[2])
+boxplot(t$V2~t$V1,t)
+dev.new()
+
+tester = cbind(paths$Hops,paths$Latency)
+output = trim_multivariate(as.data.frame(tester), 0, 1, 0.005)
+t = as.data.frame(output[2])
+boxplot(t$V2~t$V1,t)
+dev.new()
+
+tester = cbind(paths$Hops,paths$Latency2)
+output = trim_multivariate(as.data.frame(tester), 0, 1, 0.005)
+t = as.data.frame(output[2])
+boxplot(t$V2~t$V1,t)
+#####################
+
+#####################################################
+# Calculating averages when a value is fixed
+
+paths <- read.csv("results/scenario3/random/allPaths.csv", sep="\t", header=T)
+attach(paths)
+
+boxplot(paths$Latency2~paths$Hops, paths)
+
+# Finds the average of two columns when the value of one column is fixed
+fixed_mean <- function(x, y, fixed) {
+
+	sum = 0
+	index = 0
+
+	for (i in 1:length(x)) {
+		
+		if (y[i] == fixed) {
+			sum = sum + x[i]
+			index = index + 1		
+		}
+	}	
+
+	average = sum / index
+
+	cat("The average of x is ", average, " when y column has value ", fixed, "\n")
+}
+
+# What is the average latency of paths with length 5 
+fixed_mean(paths$Latency, paths$Hops, 5)
+#####################################################
+
+
+
+#####################################################
+# Regression on the trimmed dataset
+
+latency.lm = lm(Latency2 ~ Orchestrators + Hops + Neighbors + LongestPath, data=y)
+summary(latency.lm)
+# Calculating and plotting residuals
+latency.res = resid(latency.lm)
+plot(y$Hops, latency.res, ylab="Residuals", xlab="Number of Hops")
+abline(0, 0)
+#####################################################
+
+
+
